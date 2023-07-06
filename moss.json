@@ -1,23 +1,19 @@
 {
+  "starting_path": "./Homework3",
   "num_assignments": 2,
   "single_variant": true,
-  "best_files": {
-    "zip": "",
-    "csv" : ""
-  },
-  "max_appearances_before_ignored": 78,
   "comment": "My comment",
   "experimental": false,
   "number_of_matches_to_show": 100,
-  "language": "CPP",
+  "language": "c",
   "assignment_info": [
     {
       "question_name": "CoolProblem",
-      "language": "CPP",
+      "language": "c",
       "submitted_files": [
         "cool_file.c",
         "cool_file.h",
-        "*.cpp"
+        "*.c"
       ],
       "base_files": [
         "start_file.c",
@@ -28,28 +24,10 @@
       "max_appearances_before_ignored": 78,
       "comment": "Problem 1",
       "experimental": false,
-      "number_of_matches_to_show": 100
-    },
-    {
-      "best_files_zip_path": "something_else_best_files.zip",
-      "language": "CPP",
-      "submitted_files": [
-        "cool_file.c",
-        "cool_file.h",
-        "*.cpp"
-      ],
-      "base_files": [
-        "start_file.c",
-        "file_paths_on_this_computer",
-        "some_folder/**"
-      ],
-      "single_variant": true,
-      "max_appearances_before_ignored": 78,
-      "comment": "Problem 2",
-      "experimental": false,
-      "number_of_matches_to_show": 100
+      "number_of_matches_to_show": 100,
+      "are_submissions_by_directory": false
     }
   ],
-  "usage": "pl_moss assignment_spec.json"
-}
-   
+  "usage": "pl_moss assignment_spec.json path_to_best_files1.zip path_to_best_files12.zip ... "
+ }
+ 
