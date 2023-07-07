@@ -3,6 +3,7 @@
   "num_assignments": 2,
   "single_variant": true,
   "comment": "My comment",
+  "max_appearances_before_ignored": 1,
   "experimental": false,
   "number_of_matches_to_show": 100,
   "language": "c",
@@ -21,7 +22,7 @@
         "some_folder/**"
       ],
       "single_variant": true,
-      "max_appearances_before_ignored": 78,
+      "max_appearances_before_ignored": 1,
       "comment": "Problem 1",
       "experimental": false,
       "number_of_matches_to_show": 100,
