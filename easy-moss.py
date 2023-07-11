@@ -5,15 +5,13 @@ import sys
 import os
 from pathlib import Path
 from typing import TypedDict
-from typing_extensions import NotRequired # didn't work b4 running pip2 install typing-extensions
+from typing_extensions import NotRequired # didn't work b4 running pip3 install typing-extensions
 
 #-------NOTES-------
 # key is not in json if info is empty 
-# put supported languages in a separate file/ config guidelines in a separate file (?)
 # chain maps: if not in child, looks in parent.
     
 class Json_Info(TypedDict):
-    num_assignments: NotRequired[int] # this is considered required, is not required here so I could make the assignment info (is this necessary)
     comment: NotRequired[str]
     number_of_matches_to_show: NotRequired[int]
     language: NotRequired[str]
@@ -38,6 +36,7 @@ def check_json_key(sample_json: Json_Info, json_info: Json_Info, error_string: s
         error_string (str): additional information to be printed in error string (ex. error is in assignment_info)
         are_keys_required (bool): skips checking for existence of keys if keys are not required
     """
+
     supported_languages = ("c", "cc", "java", "ml", "pascal", "ada", "lisp", "scheme", "haskell", "fortran", "ascii", "vhdl", "perl", "matlab", "python", "mips", "prolog", "spice", "vb", "csharp", "modula2", "a8086", "javascript", "plsql", "verilog")
 
     for key, value in sample_json.items():
@@ -62,7 +61,6 @@ def json_info_validation(json_info: Global_Json_Info) -> None:
     """
     json_check_dict: Global_Json_Info = {
         "starting_path": "string", 
-        "num_assignments": 1, 
         "comment": "string", 
         "number_of_matches_to_show": 1, 
         "language": "string", 
@@ -83,8 +81,8 @@ def json_info_validation(json_info: Global_Json_Info) -> None:
 
     # Checking keys in each assignment info
     for assignment in json_info["assignment_info"]:
-        check_json_key(json_check_dict_assignment, assignment, "\"assignment_info\": ", True)
-        check_json_key(json_check_dict, assignment, "\"assignment_info\": ", False)         
+        check_json_key(json_check_dict_assignment, assignment, '"assignment_info": ', True)
+        check_json_key(json_check_dict, assignment, '"assignment_info": ', False)         
 
 
 def get_moss_command(config_data: Global_Json_Info, assignment_info: Assignment_Json_Info, homework_file_paths: list, base_file_paths: list) -> list:
@@ -115,12 +113,6 @@ def get_moss_command(config_data: Global_Json_Info, assignment_info: Assignment_
             moss_command += f' -b {file}'
     #DIRECTORIES   
     moss_command += " -d"
-    # try:
-    #     if assignment_info["are_submissions_by_directory"]:
-    #         moss_command += " -d"
-    # except:
-    #     if config_data["are_submissions_by_directory"]:
-    #         moss_command += " -d"
 
     #MAX APPEARANCES BEFORE IGNORED
     try:
@@ -189,13 +181,13 @@ def main():
     #Stores Json information
     try:
         config_data = get_json_info(sys.argv[1])
-    except:
-        print(f"Error: Given file is not properly configured as a JSON file.")
+    except json.decoder.JSONDecodeError as err: ## fix: specific errors (ValueError, IndexError)
+        print(f"Error: Given file is not properly configured as a JSON file.\n{err}")
         exit(0)
     json_info_validation(config_data)
 
+    # fix: new function
     #Creates and runs a moss command for each desired file
-    assignment_index = 0
     for assignment_info in config_data["assignment_info"]:
         homework_file_paths = get_file_paths(assignment_info["submitted_files"], config_data["starting_path"]) #strings of paths of all .c
         base_file_paths = get_file_paths(assignment_info["base_files"], config_data["starting_path"])
@@ -203,6 +195,9 @@ def main():
         moss_command = get_moss_command(config_data, assignment_info, homework_file_paths, base_file_paths)
         #print(moss_command)
         subprocess.run(moss_command) # .run takes a list of arguments, create w/ shlex
-        assignment_index += 1
 
 main()
+
+# import inspect
+# print(inspect.get_annotations(Assignment_Json_Info))
+# getting rid of not required part in inspect
