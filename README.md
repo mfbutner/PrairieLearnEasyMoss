@@ -9,34 +9,31 @@ Listed are the current issues with the code, along with notes on how to fix them
 * Unzip before going through files, this will create a new file
 * -d might require all folders to be flattened (give different names to files w/ same name)
 * -d might require all files to be in one folder (shutil)
+* chain maps: if not in child, looks in parent.
 
 ### Checking if input JSON is formatted properly
 * Current method does not account for optional arguments in global scope
 * Clear up what keys are required or optional for each scope
 
 #### -----GLOBAL-----
-starting path:
-comment:
-num assignments
-number of matches to show:
-language:
-max appearances:
-submitted files:
-base files:
-assignment info: required
-are submissions by directory: not required
+starting path: Required in one or the other
+comment: Not required
+number of matches to show: Not required
+language:  Required in one or the other
+max appearances: Not Required
+assignment info: Required
 
 #### -----WITHIN ASSIGNMENT-----
-starting path:
-comment:
-num assignments
-number of matches to show:
-language:
-max appearances:
-submitted files:
-base files:
+question name: Required
+starting path:  Required in one or the other
+comment: Not required
+number of matches to show: Not required
+language:  Required in one or the other
+max appearances: Not Required
+submitted files: Required
+base files: Not Required
 are submissions by directory: not required
 
-### Adding -d to MOSS command
-* If the "are_submissions_by_directory" key is not there at all, add -d
-* If the key is True, add -d
+### Supported Langauges:
+* Sort alphabetically
+* Put in external file
