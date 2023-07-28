@@ -11,10 +11,6 @@ Listed are the current issues with the code, along with notes on how to fix them
 * -d might require all files to be in one folder (shutil)
 * chain maps: if not in child, looks in parent.
 
-### Checking if input JSON is formatted properly
-* Current method does not account for optional arguments in global scope
-* Clear up what keys are required or optional for each scope
-
 #### -----GLOBAL-----
 starting path: Required in one or the other
 comment: Not required

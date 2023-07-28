@@ -1,16 +1,16 @@
 {
   "starting_path": "./Homework3",
-  "num_assignments": 2,
+  "moss_path": "./moss.sh",
   "single_variant": true,
   "comment": "My comment",
-  "max_appearances_before_ignored": 1,
+  "max_appearances_before_ignored": 900000,
   "experimental": false,
   "number_of_matches_to_show": 100,
   "language": "c",
   "assignment_info": [
     {
       "question_name": "CoolProblem",
-      "language": "c",
+      "language": "java",
       "submitted_files": [
         "cool_file.c",
         "cool_file.h",
@@ -25,8 +25,7 @@
       "max_appearances_before_ignored": 1,
       "comment": "Problem 1",
       "experimental": false,
-      "number_of_matches_to_show": 100,
-      "are_submissions_by_directory": false
+      "number_of_matches_to_show": 100
     }
   ],
   "usage": "pl_moss assignment_spec.json path_to_best_files1.zip path_to_best_files12.zip ... "

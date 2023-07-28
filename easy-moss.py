@@ -3,89 +3,84 @@ import subprocess
 import json
 import sys
 import os
+import inspect
 from pathlib import Path
 from typing import TypedDict
 from typing_extensions import NotRequired # didn't work b4 running pip3 install typing-extensions
+from collections import ChainMap
+import copy
+from zipfile import ZipFile
 
 #-------NOTES-------
-# key is not in json if info is empty 
-# chain maps: if not in child, looks in parent.
+# type checking gets complicated with the NotRequired class: find workaround
+# new type: fixed set of values (enum?)
     
-class Json_Info(TypedDict):
+class Config_Data(TypedDict):
+    starting_path: NotRequired[str]
+    moss_path: NotRequired[str]
     comment: NotRequired[str]
     number_of_matches_to_show: NotRequired[int]
-    language: NotRequired[str]
     max_appearances_before_ignored: NotRequired[int]
-    are_submissions_by_directory: NotRequired[int]
+    language: NotRequired[str]
+    assignment_info: list
 
-class Assignment_Json_Info(Json_Info):
-    submitted_files: list[str]
-    base_files: list[str]
-    
-class Global_Json_Info(Json_Info):
+class Json_Info(TypedDict):
     starting_path: str
-    assignment_info: list[Assignment_Json_Info]
+    moss_path: NotRequired[str]
+    comment: NotRequired[str]
+    number_of_matches_to_show: NotRequired[int]
+    max_appearances_before_ignored: NotRequired[int]
+    question_name: str
+    language: str
+    submitted_files: list
+    base_files: NotRequired[list]
 
-def check_json_key(sample_json: Json_Info, json_info: Json_Info, error_string: str, are_keys_required: bool) -> None:
-    """ Takes in a dict of JSON information with correct keys and a dict of JSON information to be checked.
-        Prints error message and exits if required key is not in 
 
-    Args:
-        sample_json (Json_Info): JSON info with correct keys
-        json_info (Json_Info): JSON info to be checked
-        error_string (str): additional information to be printed in error string (ex. error is in assignment_info)
-        are_keys_required (bool): skips checking for existence of keys if keys are not required
-    """
+def unzip_files(homework_file_paths: list) -> None:
+    for homework_path in homework_file_paths:
+            if homework_path[-4:] == ".zip":
+                with ZipFile(homework_path) as zip_object:
+                    # Create new folder so we don't clutter the main one (also solves duplicate name issue)
+                    os.mkdir(homework_path[:-4])
+                    zip_object.extractall(path=homework_path[:-4])
 
+
+def check_json_keys(json_info: Json_Info):
+    key_types = inspect.get_annotations(Json_Info)
     supported_languages = ("c", "cc", "java", "ml", "pascal", "ada", "lisp", "scheme", "haskell", "fortran", "ascii", "vhdl", "perl", "matlab", "python", "mips", "prolog", "spice", "vb", "csharp", "modula2", "a8086", "javascript", "plsql", "verilog")
 
-    for key, value in sample_json.items():
-        if are_keys_required:
-            if key not in json_info:
-                print(f'Error: Required key {error_string}["{key}"] is not in configuration JSON file.')
-                exit(0)
-        if key in json_info:
-            if not isinstance((json_info[key]), type(value)):
-                print(f'Error: Key {error_string}["{key}"] is not of type {type(value)}')
-                exit(0)
+    for key, value in key_types.items():
+        for assignment in json_info:
+            if "NotRequired" in str(value):
+                if ((str(type(assignment[key])))[8:-2] != (str(value))[30:-1]):
+                    print(f'Error: The value of "{key}" must be of type {value}.')
+                    exit(1)
+            else:
+                if key not in assignment: 
+                    print(f'Error: Required key "{key}" is not in configuration JSON.')
+                    exit(1)
+                if (type(assignment[key]) != value):
+                    print(f'Error: The value of "{key}" must be of type {value}.')
+                    exit(1)
+            if ("language" in assignment) and (assignment["language"]).lower() not in supported_languages:
+                print(f'Error: Given language "{assignment["language"]}" in assignment "{assignment["question_name"]}" is not one of the supported languages.')
+                exit(1)
 
-    if (json_info["language"]).lower() not in supported_languages:
-        print(f'Error: Given language {error_string}"{json_info["language"]}" is not one of the supported languages.')
-        exit(0)
 
-
-def json_info_validation(json_info: Global_Json_Info) -> None:
-    """ Checks if information in JSON file is valid to run MOSS command. Exits if info is invalid.
-    Args:
-        json_info (Global_Json_Info): information from JSON file contained in a dict
-    """
-    json_check_dict: Global_Json_Info = {
-        "starting_path": "string", 
-        "comment": "string", 
-        "number_of_matches_to_show": 1, 
-        "language": "string", 
-        "max_appearances_before_ignored": 1,
-        "assignment_info": [{}]
-        }
+def json_info_validation(config_data: Config_Data) -> list[ChainMap]:
+    global_info = copy.copy(config_data)
+    del global_info["assignment_info"]
+    global_info = ChainMap(global_info)
     
-    json_check_dict_assignment: Assignment_Json_Info = {
-        "submitted_files": ["string"],
-        "base_files": ["string"]
-    }
+    filtered_assignment_info = []
 
-    # Checking global keys
-    check_json_key(json_check_dict, json_info, "", True)
-    if (not os.path.isfile(json_info['starting_path'])) and (not os.path.isdir(json_info['starting_path'])):
-        print('Error: Path provided for ["starting_path"] is not a valid file or directory.')
-        exit(0)
+    for assignment in config_data["assignment_info"]:
+        filtered_assignment_info.append(global_info.new_child(assignment))
+    check_json_keys(filtered_assignment_info)
 
-    # Checking keys in each assignment info
-    for assignment in json_info["assignment_info"]:
-        check_json_key(json_check_dict_assignment, assignment, '"assignment_info": ', True)
-        check_json_key(json_check_dict, assignment, '"assignment_info": ', False)         
+    return filtered_assignment_info
 
-
-def get_moss_command(config_data: Global_Json_Info, assignment_info: Assignment_Json_Info, homework_file_paths: list, base_file_paths: list) -> list:
+def get_moss_command(assignment, homework_file_paths: list, base_file_paths: list) -> list:
     """Creates a moss command as a string from info specified by user.
 
     Args:
@@ -98,41 +93,25 @@ def get_moss_command(config_data: Global_Json_Info, assignment_info: Assignment_
         list: returns moss command in the form of a list of arguments
     """
     # moss [-l language] [-d] [-b basefile1] ... [-b basefilen] [-m #] [-c "string"] file1 file2 file3 ...
-    try:
-        moss_command = config_data["moss_path"]
-    except KeyError:
-        moss_command = "./moss.sh" #should be path to moss in json, defualt is ./moss.sh or something
-    #LANGUAGE
-    try: 
-        moss_command += f' -l {(assignment_info["language"]).lower()}'
-    except KeyError:
-        moss_command += f' -l {(config_data["language"]).lower()}'
-    #BASE FILES
-    if base_file_paths != []: # if a list is empty its false?
-        for file in base_file_paths:
-            moss_command += f' -b {file}'
-    #DIRECTORIES   
-    moss_command += " -d"
+    moss_command = []
 
-    #MAX APPEARANCES BEFORE IGNORED
     try:
-        moss_command += f' -m {str(assignment_info["max_appearances_before_ignored"])}'
+        moss_command.append(assignment["moss_path"])
     except KeyError:
-        moss_command += f' -m {str(config_data["max_appearances_before_ignored"])}'
-    # COMMENT
-    try:
-        moss_command += f' -c "{assignment_info["comment"]}"'
-    except KeyError:
-        moss_command += f' -c "{config_data["comment"]}"'
-    #FILE PATHS
-    for file in homework_file_paths:
-        moss_command += f' {file}'
+        moss_command.append("./moss.sh") #should be path to moss in json, defualt is ./moss.sh or something
+    
+    moss_command.extend(['-l', (assignment["language"]).lower()])
+    moss_command.append('-d')
+    if assignment["comment"]:
+        moss_command.extend(['-c', (assignment["comment"])])
+    if assignment["max_appearances_before_ignored"]:
+        moss_command.extend(['-m', str(assignment["max_appearances_before_ignored"])])
+    moss_command.extend(base_file_paths)
+    moss_command.extend(homework_file_paths)
 
-    moss_command = shlex.split(moss_command) ## gets string and splits into a list
     return moss_command    
 
-
-def get_json_info(json_path: str) -> Global_Json_Info:
+def get_json_info(json_path: str) -> Config_Data:
     """ Gets configuration info from given JSON file and stores info into a nested dictionary.
 
     Args:
@@ -173,31 +152,38 @@ def get_file_paths(desired_files: list, starting_path: str) -> list:
     return all_file_paths
 
 
+def run_easy_moss(filtered_assignment_info):
+    """ Creates and runs a moss command for each assignment.
+
+    Args:
+        config_data (Json_Info): all configuration data from given JSON file
+    """
+    for assignment in filtered_assignment_info:
+        homework_file_paths = get_file_paths(assignment["submitted_files"], assignment["starting_path"]) #strings of paths of all .c
+        base_file_paths = get_file_paths(assignment["base_files"], assignment["starting_path"])
+        moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
+        # print(moss_command)
+        subprocess.run(moss_command) # .run takes a list of arguments, create w/ shlex
+
+
 def main():
     if len(sys.argv) != 2:
         print("Usage: ./easy-moss <path to json config file>")
         exit(0) 
         
-    #Stores Json information
     try:
         config_data = get_json_info(sys.argv[1])
     except json.decoder.JSONDecodeError as err: ## fix: specific errors (ValueError, IndexError)
         print(f"Error: Given file is not properly configured as a JSON file.\n{err}")
         exit(0)
-    json_info_validation(config_data)
 
-    # fix: new function
-    #Creates and runs a moss command for each desired file
-    for assignment_info in config_data["assignment_info"]:
-        homework_file_paths = get_file_paths(assignment_info["submitted_files"], config_data["starting_path"]) #strings of paths of all .c
-        base_file_paths = get_file_paths(assignment_info["base_files"], config_data["starting_path"])
-        
-        moss_command = get_moss_command(config_data, assignment_info, homework_file_paths, base_file_paths)
-        #print(moss_command)
-        subprocess.run(moss_command) # .run takes a list of arguments, create w/ shlex
+    #UNZIP FILES
+    #DOESNT check for individual assignment json
+    all_paths = get_file_paths(["*"], config_data["starting_path"])
+    unzip_files(all_paths)
+
+    filtered_assignment_info = json_info_validation(config_data)
+
+    run_easy_moss(filtered_assignment_info)
 
 main()
-
-# import inspect
-# print(inspect.get_annotations(Assignment_Json_Info))
-# getting rid of not required part in inspect
