@@ -70,31 +70,28 @@ def unzip_files(homework_file_paths: list[str]) -> None:
     # not initially checking if the zipfile happens to have the same name as another folder in the parent directory
 
     for homework_path in homework_file_paths:
-        if homework_path[-4:] == ".zip":
+        if homework_path.endswith(".zip"):
             with ZipFile(homework_path) as zip_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
                 #temp_dir = homework_path[:-4]
                 #os.mkdir(temp_dir)
-                temp_dir = tempfile.NamedTemporaryFile()
-                zip_object.extractall(path=temp_dir.name) #Is this a path?
-                files_in_zip = get_file_paths(["*"], temp_dir.name)
-                files_in_parent_folder = get_file_paths(["*"], temp_dir.name + "/..")
+                temp_dir = tempfile.mkdtemp()
+                zip_object.extractall(path=temp_dir) #Is this a path?
+                files_in_zip = get_file_paths(["*"], temp_dir)
                 #Renaming files
                 for file_name1 in files_in_zip:
-                    for file_name2 in files_in_parent_folder:
-                        if file_name1 == file_name2:
-                            basename = os.path.basename(file_name1)
-                            os.rename(file_name1, file_name1[:-len(basename)] + file_name1.replace("/","_") + file_name1[-len(basename):])
+                    basename = os.path.basename(file_name1)
+                    os.rename(file_name1, file_name1[:-len(basename)] + file_name1.replace("/","_") + file_name1[-len(basename):])
                 #Flattening zip
                 for file_name1 in files_in_zip:
-                    shutil.move(file_name1, temp_dir.name + "/..")
+                    shutil.move(file_name1, temp_dir + "/..")
                 os.remove(homework_path) #delete zip file
-                shutil.rmtree(temp_dir) #delete temp file
+                #shutil.rmtree(temp_dir) #delete temp file
 
     # if the folder still has zip files, run function again (ONLY raises warning as of now)
     if has_zip_files(homework_file_paths):
         print("Warning: There are still nested zipfiles in the specified directory.\n")
-    #     unzip_files(homework_file_paths)
+    #    unzip_files(homework_file_paths)
 
 def check_json_keys(json_info: Json_Info):
     """Checks if keys given in configuration JSON are of correct type, and that required keys exist in at least one instance in the global or assignment scopes.
