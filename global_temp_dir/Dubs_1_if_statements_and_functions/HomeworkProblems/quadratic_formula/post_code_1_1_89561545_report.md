@@ -1,0 +1,5 @@
+# Algorithm (steps to solve the problem)
+The algorithm used to solve this problem is first taking the three users values and then finding the root. This is the number that you solve for that is right before you take the square root. Afterwards you take the root function and try to find if it greater then 0. Assuming it is, you need to plug it into the formula and find the 2 solutions. When the value is equal to 0, a change is necessary, instead you have to manipulate the formula to where it will works specificaly for 1 input in the formula. For values less then zero, it automatically has no solution.
+    
+# Differences
+The changes in the code were fairly minimal. Originally, creating 2 functions was not the main goal of the plan; however, it became more important for organizational purposes. The root part, was shifted to a new function called void square_root(). The goal of this function was for finding the answer for when root was greater then zero. It also allowed the program to be split up so finding errors became easier. Besides that, no changes were made to the program from what was originally planned.
