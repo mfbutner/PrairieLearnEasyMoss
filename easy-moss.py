@@ -11,6 +11,8 @@ try:
     from typing import NotRequired, TypedDict, get_args, get_origin
 except:
     from typing_extensions import TypedDict
+
+
 from collections import ChainMap
 from zipfile import ZipFile
 
@@ -81,8 +83,7 @@ def has_zip_files(file_names) -> bool:
         if filename.endswith('.zip'):
             return True
     return False
-
-
+  
 def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> None:
     """Extracts contents of zipfiles into a temporary directory, renames contents of zipfile, flattens contents to parent directory.
 
@@ -159,6 +160,7 @@ def check_key_types(assignment_key, key_type) -> bool:
         if not isinstance(assignment_key, key_type):
             return False
     return True        
+   
 
 def check_json_keys(json_info: Json_Info):
     """Checks if keys given in configuration JSON are of correct type, and that required keys exist in at least one instance in the global or assignment scopes.
