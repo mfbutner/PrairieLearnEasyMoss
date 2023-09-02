@@ -8,20 +8,43 @@ import shutil
 import copy
 from pathlib import Path
 try:
-    from typing import TypedDict
+    from typing import NotRequired, TypedDict, get_args, get_origin
 except:
     from typing_extensions import TypedDict
-from typing_extensions import NotRequired # didn't work b4 running pip3 install typing-extensions
+
+
 from collections import ChainMap
 from zipfile import ZipFile
 
 #-------NOTES-------
+
+# if moss path exists, check that it is valid
+
+# print to stdout, 2> to text.txt
+
+# zip file issues
+# - homework_path has a different value depending on location in unzip function
+# - unzipped .c files are being placed in Homework3 instead of global temp
+# - there are 2 of them
+# - they aren't .c files?
+
+
 # type checking gets complicated with the NotRequired class: find workaround
 # new type: fixed set of values (enum?)
 # specify what the lists are of ex. list[int]
+# update python
+
+# run moss command with new global temp?
 
 # for get all files
 # pass in question name and check if question name is in? question_name + **/* + rest < ex
+# old name: homework name, file name
+# new name: add question name, python path to file within zip
+# people might not put zip files inside of zip files
+
+# for error checking:
+# loop through actual config data, then check if it's in the typeddicts
+# add all errors to list, if list is not empty, complain
 
 # issue: being specific with type hints for lists interferes with type checking   
 class Config_Data(TypedDict):
@@ -33,7 +56,7 @@ class Config_Data(TypedDict):
     language: NotRequired[str]
     assignment_info: list#[dict]
 
-class Json_Info(TypedDict):
+class Json_Info(TypedDict): # fix: change name to assignment_info
     starting_path: str
     moss_path: NotRequired[str]
     comment: NotRequired[str]
@@ -41,28 +64,32 @@ class Json_Info(TypedDict):
     max_appearances_before_ignored: NotRequired[int]
     question_name: str
     language: str
-    submitted_files: list#[str] ex. this would show up as a str, not a list
-    base_files: NotRequired[list]#[str]]
+    submitted_files: list[str]
+    base_files: NotRequired[list] # list[str]?
 
-# def create_unique_name(file_name, parent_dir) -> str:
-#     counter = 1
-#     while file_name in parent_dir:
-#         file_name += counter
-#         counter += 1
-#     return file_name
+# def unique_file_name(file_name, directory) -> str:
+#     if 
 
-def has_zip_files(directory):
-    for filename in directory:
+def has_zip_files(file_names) -> bool:
+    """Checks if a given list of files includes .zip files.
+
+    Args:
+        file_names (_type_): names of files to check
+
+    Returns:
+        bool: has zip files or doesn't have zip files
+    """
+    for filename in file_names:
         if filename.endswith('.zip'):
             return True
     return False
-
-
-def unzip_files(homework_file_paths: list[str]) -> None:
-    """To be completed
+  
+def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> None:
+    """Extracts contents of zipfiles into a temporary directory, renames contents of zipfile, flattens contents to parent directory.
 
     Args:
-        homework_file_paths (list[str]): _description_
+        homework_file_paths (list[str]): path names of all files inside "starting path" directory
+        global_temp_dir_name ([str]): name of the temporary global directory
     """
     # temp folder ex: /var/folders/fx/gtt4zm914w7djxzxg0hgdv140000gn/T/tmpktd1ldnx
     # shutil.copy(file_name1, file_name1 + "/..") incompatible with tempdir
@@ -70,28 +97,70 @@ def unzip_files(homework_file_paths: list[str]) -> None:
     # not initially checking if the zipfile happens to have the same name as another folder in the parent directory
 
     for homework_path in homework_file_paths:
+        # print("HERE!!!!!!! ", homework_file_paths)
         if homework_path.endswith(".zip"):
             with ZipFile(homework_path) as zip_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
                 #temp_dir = homework_path[:-4]
                 #os.mkdir(temp_dir)
-                temp_dir = tempfile.mkdtemp()
-                zip_object.extractall(path=temp_dir) #Is this a path?
-                files_in_zip = get_file_paths(["*"], temp_dir)
-                #Renaming files
-                for file_name1 in files_in_zip:
-                    basename = os.path.basename(file_name1)
-                    os.rename(file_name1, file_name1[:-len(basename)] + file_name1.replace("/","_") + file_name1[-len(basename):])
-                #Flattening zip
-                for file_name1 in files_in_zip:
-                    shutil.move(file_name1, temp_dir + "/..")
-                os.remove(homework_path) #delete zip file
-                #shutil.rmtree(temp_dir) #delete temp file
+                temp_dir = tempfile.TemporaryDirectory()
+                
+                #shutil.move(temp_dir.name, global_temp_dir_name)
+                zip_object.extractall(path=temp_dir.name)
+                
+                # print(os.listdir(temp_dir.name), file = sys.stderr)
+                for path, dir_names, file_names in os.walk(temp_dir.name):
+                    path_with_underscores = path.replace(os.path.sep,"_")
+                    for file in file_names:
+                        #shutil.move(os.path.join(path, file), os.path.join(temp_dir.name, f'{path_with_underscores}_{file}'))
+                        #new_file_name = f'{path_with_underscores}_{file}'
+                        #os.rename(file, new_file_name)
+                        flattened_directory_path = "/".join(homework_path.split("/")[:-1])
+                        print(flattened_directory_path, file = sys.stderr)
+                        shutil.move(os.path.join(path, file), os.path.join(flattened_directory_path, f"{path_with_underscores}_{file}"))
+                        # for path with underscores:
+                        # 
+
+                # files_in_zip = get_file_paths(["*"], temp_dir.name)
+                # files_in_parent_folder = get_file_paths(["*"], temp_dir.name + "/..")
+                # #Renaming files
+                # for file_name1 in files_in_zip:
+                #     for file_name2 in files_in_parent_folder:
+                #         if file_name1 == file_name2:
+                #             basename = os.path.basename(file_name1)
+                #             os.rename(file_name1, file_name1[:-len(basename)] + file_name1.replace("/","_") + file_name1[-len(basename):])
+                # #Flattening zip
+                # for file_name1 in files_in_zip:
+                #     shutil.move(file_name1, temp_dir.name + "/..")
+                # os.remove(homework_path) #delete zip file
 
     # if the folder still has zip files, run function again (ONLY raises warning as of now)
     if has_zip_files(homework_file_paths):
         print("Warning: There are still nested zipfiles in the specified directory.\n")
-    #    unzip_files(homework_file_paths)
+    #     unzip_files(homework_file_paths)
+
+def check_key_types(assignment_key, key_type) -> bool:
+    """ Checks if the type of a given key matches the type of a given value. 
+        If given a list, checks if items inside list matches the type of value.
+
+    Args:
+        assignment_key (Any): given key
+        key_type (_type_): type to check key against, ex. str
+
+    Returns:
+        bool: true if key matches, false if key doesn't match
+    """
+    #print(assignment_key)
+    if get_origin(key_type) is list: # check items inside of list are of correct type
+        key_type = get_args(key_type)
+        for item_in_list in assignment_key: # fix
+            if not isinstance(item_in_list, key_type):
+                return False
+    else:
+        if not isinstance(assignment_key, key_type):
+            return False
+    return True        
+   
 
 def check_json_keys(json_info: Json_Info):
     """Checks if keys given in configuration JSON are of correct type, and that required keys exist in at least one instance in the global or assignment scopes.
@@ -101,29 +170,45 @@ def check_json_keys(json_info: Json_Info):
     """
     key_types = inspect.get_annotations(Json_Info)
     supported_languages = ("c", "cc", "java", "ml", "pascal", "ada", "lisp", "scheme", "haskell", "fortran", "ascii", "vhdl", "perl", "matlab", "python", "mips", "prolog", "spice", "vb", "csharp", "modula2", "a8086", "javascript", "plsql", "verilog")
+    missing_required_keys = []
+    incorrect_type_keys = []
 
-    for key, value in key_types.items():
-        for assignment in json_info:
-            if hasattr(value, '__origin__') and value.__origin__ is NotRequired:
-                if (type(assignment[key])) != value.__args__[0]: # first element in tuple is the type of a GenericAlias element
-                    print(f'Error: The value of "{key}" must be of type {value.__args__[0]}.')
-                    exit(1)
-            else:
+    for assignment in json_info:
+        for key, key_type in key_types.items(): #rename value
+            if get_origin(key_type) is not NotRequired: 
                 if key not in assignment: 
-                    print(f'Error: Required key "{key}" is not in configuration JSON.')
-                    exit(1)
-                if (type(assignment[key]) != value): 
-                    print(f'Error: The value of "{key}" must be of type {value}.')
-                    exit(1)
-            #If language is optional, we can't assume it will be there.
-            if ("language" in assignment) and (assignment["language"]).lower() not in supported_languages:
-                print(f'Error: Given language "{assignment["language"]}" in assignment "{assignment["question_name"]}" is not one of the supported languages.')
+                    missing_required_keys.append(key)
+                elif not check_key_types(assignment[key], key_type):
+                    incorrect_type_keys.append(key)
+            else: # key is not required
+                key_type = (get_args(key_type))[0]
+                if key in assignment: 
+                    if not check_key_types(assignment[key], key_type):
+                        incorrect_type_keys.append(key)
+                        
+        if ("language" in assignment) and isinstance(assignment["language"], str) and (assignment["language"]).lower() not in supported_languages:
+            print(f'Error: Given language "{assignment["language"]}" in assignment "{assignment["question_name"]}" is not one of the supported languages.')
+            exit(1)
+        if ("moss_path" in assignment) and isinstance(assignment["language"], str):
+            if not os.path.isfile(assignment["moss_path"]):
+                print(f'Error: "{assignment["moss_path"]}" is not a valid directory')
                 exit(1)
-            if not os.path.exists(assignment["starting_path"]): #fix
-                print(f'Error: "{assignment["starting_path"]}" is not a valid directory.')
+        if not (os.path.isdir(assignment["starting_path"])): #fix
+            print(f'Error: "{assignment["starting_path"]}" is not a valid directory.')
+            exit(1)
 
+    if len(missing_required_keys) != 0:
+        for missing_key in missing_required_keys:
+            print(f'Error: Required key "{missing_key}" is not in configuration JSON.')
+            exit(1)
 
-def json_info_validation(config_data: Config_Data) -> list[ChainMap]:
+    if len(incorrect_type_keys) != 0:
+        for incorrect_key in incorrect_type_keys:
+            type_val = key_types[incorrect_key]
+            print(f'Error: The value of "{incorrect_key}" must be of type "{type_val}".')
+            exit(1)
+
+def json_info_validation(config_data: Config_Data) -> list[Json_Info]: ## fix: specify what chainmap
     """Checks if configuration data is valid. If valid, returns a list of moss arguments, prioritizing assignment arguments.
 
     Args:
@@ -179,7 +264,7 @@ def get_json_info(json_path: str) -> Config_Data:
     """ Gets configuration info from given JSON file and stores info into a nested dictionary.
 
     Args:
-        json_path (str): path to JSON file containing confiuration info
+        json_path (str): path to JSON file containing configuration info
 
     Returns:
         Global_Json_Info: nested dictionary with all configuration info from JSON file
@@ -220,24 +305,26 @@ def run_easy_moss(filtered_assignment_info):
         config_data (Json_Info): all configuration data from given JSON file
     """
     for assignment in filtered_assignment_info:
-        # puts everything in a temporary directory
-        global_temp_dir = assignment["starting_path"] + "/global_temp_dir"
+        # temp_dir = tempfile.TemporaryDirectory() #fix
+        # global_temp_dir = temp_dir.name
+        global_temp_dir = "./global"
         # copies all files from starting path dir to global temp dir
-        shutil.copytree(assignment["starting_path"], global_temp_dir)
+        global_temp_dir = shutil.copytree(assignment["starting_path"], global_temp_dir, dirs_exist_ok = True)
+
         # unzips and flattens files
         all_paths = get_file_paths(["*"], global_temp_dir)
-
-        unzip_files(all_paths)
-        #flattened_files = get_file_paths(["*"], global_temp_dir)
-        # print(flattened_files) #DELETE
+        # copies all files from starting path dir to global temp dir
+        # for path in all_paths:
+        #     shutil.copy(path, global_temp_dir)
+        unzip_files(all_paths, global_temp_dir)
 
         homework_file_paths = get_file_paths(assignment["submitted_files"], global_temp_dir) #strings of paths of all .c
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir)
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
-        # print(moss_command)
-        subprocess.run(moss_command) # .run takes a list of arguments
-        shutil.rmtree(global_temp_dir) # doesn't delete global directory until moss command finishes
-        # removes temporary directory
+        print(moss_command)
+        #subprocess.run(moss_command) # .run takes a list of arguments
+        #shutil.rmtree(global_temp_dir) # doesn't delete global directory until moss command finishes
+        # # removes temporary directory
 
 def main():
     if len(sys.argv) != 2:
@@ -252,5 +339,10 @@ def main():
     filtered_assignment_info = json_info_validation(config_data)
 
     run_easy_moss(filtered_assignment_info)
+
+    # try:
+    #     run_easy_moss(filtered_assignment_info)
+    # finally:
+    #     shutil.rmtree("./global_temp_dir")
 
 main()
