@@ -1,4 +1,0 @@
-# Algorithm (steps to solve the problem)
-
-# Differences
-At first I had decided to split the problem into numerator and denominator so I thought I would create functions for each part but actually, I just created a function to find the solution in the square root (b^2 - 4ac). I used the answer to figure out how many solutions there are possible with the a, b, and c inputed. If the function value was less than 0 then there would be 0 solutions. If it was equal to 0 then there would be 1 solution and i calculated it all in one line, using the funciton value. if the function value was greater than 0, there would be 2 solutions, and like before I calculated both solutions in 2 different lines.

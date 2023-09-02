@@ -3,14 +3,17 @@ import json
 import sys
 import os
 import tempfile
+import tempfile
 import inspect
+import shutil
+import copy
 import shutil
 import copy
 from pathlib import Path
 try:
     from typing import NotRequired, TypedDict, get_args, get_origin
 except:
-    from typing_extensions import TypedDict, get_args, get_origin, NotRequired # didn't work b4 running pip3 install typing-extensions
+    from typing_extensions import TypedDict
 from collections import ChainMap
 from zipfile import ZipFile
 
@@ -18,6 +21,7 @@ from zipfile import ZipFile
 
 # if moss path exists, check that it is valid
 
+# print to stdout, 2> to text.txt
 
 # zip file issues
 # - homework_path has a different value depending on location in unzip function
@@ -95,7 +99,7 @@ def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> No
     # not initially checking if the zipfile happens to have the same name as another folder in the parent directory
 
     for homework_path in homework_file_paths:
-        print("HERE!!!!!!! ", homework_file_paths)
+        # print("HERE!!!!!!! ", homework_file_paths)
         if homework_path.endswith(".zip"):
             with ZipFile(homework_path) as zip_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
@@ -106,6 +110,7 @@ def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> No
                 #shutil.move(temp_dir.name, global_temp_dir_name)
                 zip_object.extractall(path=temp_dir.name)
                 
+                # print(os.listdir(temp_dir.name), file = sys.stderr)
                 for path, dir_names, file_names in os.walk(temp_dir.name):
                     path_with_underscores = path.replace(os.path.sep,"_")
                     for file in file_names:
@@ -113,8 +118,11 @@ def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> No
                         #new_file_name = f'{path_with_underscores}_{file}'
                         #os.rename(file, new_file_name)
                         flattened_directory_path = "/".join(homework_path.split("/")[:-1])
-                        shutil.move(os.path.join(path, file), os.path.join(flattened_directory_path, path_with_underscores))
-                
+                        print(flattened_directory_path, file = sys.stderr)
+                        shutil.move(os.path.join(path, file), os.path.join(flattened_directory_path, f"{path_with_underscores}_{file}"))
+                        # for path with underscores:
+                        # 
+
                 # files_in_zip = get_file_paths(["*"], temp_dir.name)
                 # files_in_parent_folder = get_file_paths(["*"], temp_dir.name + "/..")
                 # #Renaming files
@@ -154,7 +162,6 @@ def check_key_types(assignment_key, key_type) -> bool:
         if not isinstance(assignment_key, key_type):
             return False
     return True        
-
 
 def check_json_keys(json_info: Json_Info):
     """Checks if keys given in configuration JSON are of correct type, and that required keys exist in at least one instance in the global or assignment scopes.
@@ -202,7 +209,7 @@ def check_json_keys(json_info: Json_Info):
             print(f'Error: The value of "{incorrect_key}" must be of type "{type_val}".')
             exit(1)
 
-def json_info_validation(config_data: Config_Data) -> list[ChainMap]: ## fix: specify what chainmap
+def json_info_validation(config_data: Config_Data) -> list[Json_Info]: ## fix: specify what chainmap
     """Checks if configuration data is valid. If valid, returns a list of moss arguments, prioritizing assignment arguments.
 
     Args:
@@ -263,9 +270,8 @@ def get_json_info(json_path: str) -> Config_Data:
     Returns:
         Global_Json_Info: nested dictionary with all configuration info from JSON file
     """
-    json_file = open(json_path)
-    config_data = json.load(json_file)
-    json_file.close()  
+    with open(json_path) as json_file:
+        config_data = json.load(json_file)
     return config_data
 
 
@@ -300,13 +306,14 @@ def run_easy_moss(filtered_assignment_info):
         config_data (Json_Info): all configuration data from given JSON file
     """
     for assignment in filtered_assignment_info:
-        #global_temp_dir = tempfile.TemporaryDirectory()
-        global_temp_dir = "./global_temp_dir"
+        # temp_dir = tempfile.TemporaryDirectory() #fix
+        # global_temp_dir = temp_dir.name
+        global_temp_dir = "./global"
         # copies all files from starting path dir to global temp dir
-        shutil.copytree(assignment["starting_path"], global_temp_dir)
+        global_temp_dir = shutil.copytree(assignment["starting_path"], global_temp_dir, dirs_exist_ok = True)
 
         # unzips and flattens files
-        all_paths = get_file_paths(["*"], assignment["starting_path"])
+        all_paths = get_file_paths(["*"], global_temp_dir)
         # copies all files from starting path dir to global temp dir
         # for path in all_paths:
         #     shutil.copy(path, global_temp_dir)
@@ -316,8 +323,8 @@ def run_easy_moss(filtered_assignment_info):
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir)
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
         print(moss_command)
-        # subprocess.run(moss_command) # .run takes a list of arguments
-        # shutil.rmtree(global_temp_dir) # doesn't delete global directory until moss command finishes
+        #subprocess.run(moss_command) # .run takes a list of arguments
+        #shutil.rmtree(global_temp_dir) # doesn't delete global directory until moss command finishes
         # # removes temporary directory
 
 def main():
@@ -333,5 +340,10 @@ def main():
     filtered_assignment_info = json_info_validation(config_data)
 
     run_easy_moss(filtered_assignment_info)
+
+    # try:
+    #     run_easy_moss(filtered_assignment_info)
+    # finally:
+    #     shutil.rmtree("./global_temp_dir")
 
 main()

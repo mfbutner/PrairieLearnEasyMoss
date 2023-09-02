@@ -1,4 +1,0 @@
-# Algorithm (steps to solve the problem)
-Basically the same idea I had at the beginning. I need to define a, b, c in the form of double and print out "Please enter a, b, c". Next, continue to define solution1, solution2, and solution3 in the form of doube. Next, comparing (b * b) - (4 * a * c) with 0 will give three results that are greater than 0, equal to 0 and less than 0. Then use if and else if statements to distinguish different situations and print different results. Finally returns 0.
-# Differences
-This is basically the same idea I had earlier. The two errors in the submission process were due to small details such as the spelling of words. So it is easier to correct.
