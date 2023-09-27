@@ -46,6 +46,11 @@ from zipfile import ZipFile
 # new name: add question name, python path to file within zip
 # people might not put zip files inside of zip files
 
+# for error checking:
+# loop through actual config data, then check if it's in the typeddicts
+# add all errors to list, if list is not empty, complain
+
+# issue: being specific with type hints for lists interferes with type checking   
 class Config_Data(TypedDict):
     starting_path: NotRequired[str]
     moss_path: NotRequired[str]
@@ -54,6 +59,7 @@ class Config_Data(TypedDict):
     max_appearances_before_ignored: NotRequired[int]
     language: NotRequired[str]
     assignment_info: list  # [dict]
+    question_name: NotRequired[str]
 
 
 class Json_Info(TypedDict):  # fix: change name to assignment_info
@@ -66,6 +72,8 @@ class Json_Info(TypedDict):  # fix: change name to assignment_info
     language: str
     submitted_files: list[str]
     base_files: NotRequired[list]  # list[str]?
+    question_name: NotRequired[str]
+
 
 # def unique_file_name(file_name, directory) -> str:
 #     if 
@@ -99,29 +107,31 @@ def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> No
 
     for homework_path in homework_file_paths:
         # print("HERE!!!!!!! ", homework_file_paths)
-        if homework_path.endswith(".zip"):
+        if zipfile.is_zipfile(homework_path):  # TODO: Add support for tar files?
             with ZipFile(homework_path) as zip_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
-                #temp_dir = homework_path[:-4]
-                #os.mkdir(temp_dir)
+                # temp_dir = homework_path[:-4]
+                # os.mkdir(temp_dir)
                 temp_dir = tempfile.TemporaryDirectory()
-                
-                #shutil.move(temp_dir.name, global_temp_dir_name)
+
+                # shutil.move(temp_dir.name, global_temp_dir_name)
                 zip_object.extractall(path=temp_dir.name)
-                
+
                 # print(os.listdir(temp_dir.name), file = sys.stderr)
+                flattened_directory_path = "/".join(homework_path.split("/")[:-1])
                 for path, dir_names, file_names in os.walk(temp_dir.name):
-                    path_with_underscores = path.replace(os.path.sep,"_")
+                    # TODO: need to remove temporary directory name from path_with_underscores
+                    path_with_underscores = path.replace(os.path.sep, "_")
                     for file in file_names:
-                        #shutil.move(os.path.join(path, file), os.path.join(temp_dir.name, f'{path_with_underscores}_{file}'))
-                        #new_file_name = f'{path_with_underscores}_{file}'
-                        #os.rename(file, new_file_name)
-                        flattened_directory_path = "/".join(homework_path.split("/")[:-1])
-                        print(flattened_directory_path, file = sys.stderr)
-                        shutil.move(os.path.join(path, file), os.path.join(flattened_directory_path, f"{path_with_underscores}_{file}"))
+                        # shutil.move(os.path.join(path, file), os.path.join(temp_dir.name, f'{path_with_underscores}_{file}'))
+                        # new_file_name = f'{path_with_underscores}_{file}'
+                        # os.rename(file, new_file_name)
+                        print(flattened_directory_path, file=sys.stderr)
+                        shutil.move(os.path.join(path, file),
+                                    os.path.join(flattened_directory_path, f"{path_with_underscores}_{file}"))
                         # for path with underscores:
                         # 
-
+                # TODO: remove dead commented code if not needed
                 # files_in_zip = get_file_paths(["*"], temp_dir.name)
                 # files_in_parent_folder = get_file_paths(["*"], temp_dir.name + "/..")
                 # #Renaming files
@@ -138,11 +148,14 @@ def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> No
     # if the folder still has zip files, run function again (ONLY raises warning as of now)
     if has_zip_files(homework_file_paths):
         print("Warning: There are still nested zipfiles in the specified directory.\n")
+        # TODO: Does this work?
+        # TODO: you should recurse instead as soon as you find a nested zip file, not over everything
     #     unzip_files(homework_file_paths)
 
-def check_key_types(assignment_key, key_type) -> bool:
-    """ Checks if the type of a given key matches the type of a given value. 
-        If given a list, checks if items inside list matches the type of value.
+
+def is_type(value: Any, expected_type: type) -> bool:
+    """ Checks value is an instance of the expected type.
+    For lists, also check contained elements
 
     Args:
         value (Any): given key
@@ -151,8 +164,6 @@ def check_key_types(assignment_key, key_type) -> bool:
     Returns:
         bool: true if key matches, false if key doesn't match
     """
-
-    # print(value)
 
     if get_origin(expected_type) is list:  # check items inside of list are of correct type
         expected_type = get_args(expected_type)
@@ -172,43 +183,50 @@ def check_json_keys(json_info: Json_Info):
         json_info (Json_Info): dict of information to be checked
     """
     key_types = inspect.get_annotations(Json_Info)
-    supported_languages = ("c", "cc", "java", "ml", "pascal", "ada", "lisp", "scheme", "haskell", "fortran", "ascii", "vhdl", "perl", "matlab", "python", "mips", "prolog", "spice", "vb", "csharp", "modula2", "a8086", "javascript", "plsql", "verilog")
-    missing_required_keys = []
-    incorrect_type_keys = []
+    supported_languages = (
+        "c", "cc", "java", "ml", "pascal", "ada", "lisp", "scheme", "haskell", "fortran", "ascii", "vhdl", "perl",
+        "matlab",
+        "python", "mips", "prolog", "spice", "vb", "csharp", "modula2", "a8086", "javascript", "plsql", "verilog")
+    
+    error_messages = []
 
-    for assignment in json_info:
-        for key, key_type in key_types.items(): #rename value
-            if get_origin(key_type) is not NotRequired: 
-                if key not in assignment: 
-                    missing_required_keys.append(key)
-                elif not check_key_types(assignment[key], key_type):
-                    incorrect_type_keys.append(key)
+    # TODO: Error messages should be printed to stderr
+
+    for position, assignment in enumerate(json_info):
+        if 'question_name' in assignment:
+            question_name = assignment['question_name']
+        else:
+            question_name = position
+
+        for key, key_type in key_types.items():  # rename value
+            if get_origin(key_type) is not NotRequired:  # TODO: add method is_required to simplify double negation
+                if key not in assignment: # checks if all required keys are in assignment or global scope
+                    missing_key_err = f'Required key "{key}" is missing in assignment "{question_name}" or global keys.'
+                    error_messages.append(missing_key_err)
+                elif not is_type(assignment[key], key_type): # checks if value is correct
+                    wrong_key_err = f'Value of "{key}" is "{assignment[key]}", when it must be of type "{key_type}" in assignment "{question_name}" or global keys'
+                    error_messages.append(wrong_key_err)
+                elif key == "language": # checks if language is one of the supported languages
+                    if assignment[key].lower() not in supported_languages:
+                        wrong_lang_err = f'Given language "{assignment[key]}" in assignment "{assignment["question_name"]}" is not one of the supported languages.'
+                        error_messages.append(wrong_lang_err) 
+                elif (key == "moss_path") or (key == "starting_path"): # checks if given paths are valid
+                    if not (os.path.isfile(assignment[key]) or os.path.isdir(assignment[key])):
+                        invalid_moss_path_err = f'"{assignment[key]}" in assignment "{question_name} is not a valid path.'
+                        error_messages.append(invalid_moss_path_err)
+
             else:  # key is not required
                 key_type = (get_args(key_type))[0]
                 if key in assignment:
                     if not is_type(assignment[key], key_type):
-                        incorrect_type_keys.append(key)
-                        
-        if ("language" in assignment) and isinstance(assignment["language"], str) and (assignment["language"]).lower() not in supported_languages:
-            print(f'Error: Given language "{assignment["language"]}" in assignment "{assignment["question_name"]}" is not one of the supported languages.')
-            exit(1)
-        if ("moss_path" in assignment) and isinstance(assignment["language"], str):
-            if not os.path.isfile(assignment["moss_path"]):
-                print(f'Error: "{assignment["moss_path"]}" is not a valid directory')
-                exit(1)
-        if not (os.path.isdir(assignment["starting_path"])):  # fix
-            print(f'Error: "{assignment["starting_path"]}" is not a valid directory.')
-            exit(1)
+                        wrong_key_err = f'Value of "{assignment[key]}" must be of type "{key_type}".'
+                        error_messages.append(wrong_key_err)
 
-    if len(missing_required_keys) != 0:
-        for missing_key in missing_required_keys:
-            print(f'Error: Required key "{missing_key}" is not in configuration JSON.')
-        exit(1)
-
-    if incorrect_type_keys:
-        for incorrect_key in incorrect_type_keys:
-            type_val = key_types[incorrect_key]
-            print(f'Error: The value of "{incorrect_key}" must be of type "{type_val}".')
+    if error_messages:
+        print("Your configuration JSON file has these following issues:")
+        print("---------------------------------------------------------")
+        for position, message in enumerate(error_messages):
+            print(f'{position + 1}. {message}')
         exit(1)
 
 
@@ -229,6 +247,7 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:  ## fix: 
 
     for assignment in config_data["assignment_info"]:
         filtered_assignment_info.append(global_info.new_child(assignment))
+    
     check_json_keys(filtered_assignment_info)
 
     return filtered_assignment_info
@@ -328,8 +347,8 @@ def run_easy_moss(filtered_assignment_info):  # TODO: Add type hints
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir)
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
         print(moss_command)
-        #subprocess.run(moss_command) # .run takes a list of arguments
-        #shutil.rmtree(global_temp_dir) # doesn't delete global directory until moss command finishes
+        # subprocess.run(moss_command) # .run takes a list of arguments
+        # shutil.rmtree(global_temp_dir) # doesn't delete global directory until moss command finishes
         # # removes temporary directory
 
 
@@ -346,12 +365,12 @@ def main():
     # TODO: check for file errors like file not found or permission errors.
     filtered_assignment_info = json_info_validation(config_data)
 
-    run_easy_moss(filtered_assignment_info)
+    # run_easy_moss(filtered_assignment_info)
 
     # try:
     #     run_easy_moss(filtered_assignment_info)
     # finally:
-    #     shutil.rmtree("./global")
+    #     shutil.rmtree("./global_temp_dir")
 
 
 main()

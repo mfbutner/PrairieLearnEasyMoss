@@ -1,5 +1,5 @@
 {
-  "starting_path": "../Homework3",
+  "starting_path": "./Homework3",
   "moss_path": "./moss.sh",
   "single_variant": true,
   "comment": "My comment",
