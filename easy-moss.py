@@ -25,32 +25,14 @@ from zipfile import ZipFile
 # if moss path exists, check that it is valid
 
 # print to stdout, 2> to text.txt
-
-# zip file issues
-# - homework_path has a different value depending on location in unzip function
-# - unzipped .c files are being placed in Homework3 instead of global temp
-# - there are 2 of them
-# - they aren't .c files?
-
-
-# type checking gets complicated with the NotRequired class: find workaround
-# new type: fixed set of values (enum?)
-# specify what the lists are of ex. list[int]
-# update python
-
-# run moss command with new global temp?
+# question name + 
 
 # for get all files
 # pass in question name and check if question name is in? question_name + **/* + rest < ex
 # old name: homework name, file name
 # new name: add question name, python path to file within zip
 # people might not put zip files inside of zip files
-
-# for error checking:
-# loop through actual config data, then check if it's in the typeddicts
-# add all errors to list, if list is not empty, complain
-
-# issue: being specific with type hints for lists interferes with type checking   
+  
 class Config_Data(TypedDict):
     starting_path: NotRequired[str]
     moss_path: NotRequired[str]
@@ -83,7 +65,7 @@ def has_zip_files(file_names) -> bool:
         bool: has zip files or doesn't have zip files
     """
     for filename in file_names:
-        if filename.endswith('.zip'):
+        if filename.is_zipfile:
             return True
     return False
 
@@ -99,9 +81,10 @@ def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> No
     # shutil.copy(file_name1, file_name1 + "/..") incompatible with tempdir
     # Directory not empty error when trying to delete the temp directory
     # not initially checking if the zipfile happens to have the same name as another folder in the parent directory
+    # question_name + zipfile + nested diretories + filename for a nested file
+    # question_name + path for unnested file
 
     for homework_path in homework_file_paths:
-        # print("HERE!!!!!!! ", homework_file_paths)
         if zipfile.is_zipfile(homework_path):  # TODO: Add support for tar files?
             with ZipFile(homework_path) as zip_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
@@ -242,9 +225,7 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
 
     return filtered_assignment_info
 
-
-# TODO add type hints for assignment
-def get_moss_command(assignment, homework_file_paths: list[str], base_file_paths: list[str]) -> list[str]:
+def get_moss_command(assignment: Json_Info, homework_file_paths: list[str], base_file_paths: list[str]) -> list[str]:
     """Creates a moss command as a string from info specified by user.
 
     Args:
@@ -339,10 +320,7 @@ def run_easy_moss(filtered_assignment_info: Json_Info):
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir)
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
         print(moss_command)
-        # subprocess.run(moss_command) # .run takes a list of arguments
-        # shutil.rmtree(global_temp_dir) # doesn't delete global directory until moss command finishes
-        # # removes temporary directory
-
+        # subprocess.run(moss_command)
 
 def main():
     if len(sys.argv) != 2:
@@ -351,12 +329,10 @@ def main():
 
     try:
         config_data = get_json_info(sys.argv[1])
-    except FileNotFoundError as err:
+    except FileNotFoundError or PermissionError or ValueError or IndexError as err:
         print(f"{err}", file=sys.stderr)
         exit(1)
-    except PermissionError as err:
-        print(f"{err}", file=sys.stderr)
-    except json.decoder.JSONDecodeError as err:  ## fix: specific errors (ValueError, IndexError)
+    except json.decoder.JSONDecodeError as err:
         print(f"Given file is not properly configured as a JSON file.\n{err}", file=sys.stderr)
         exit(1)
 
