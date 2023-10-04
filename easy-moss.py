@@ -61,8 +61,7 @@ class Config_Data(TypedDict):
     assignment_info: list  # [dict]
     question_name: NotRequired[str]
 
-
-class Json_Info(TypedDict):  # fix: change name to assignment_info
+class Json_Info(TypedDict):
     starting_path: str
     moss_path: NotRequired[str]
     comment: NotRequired[str]
@@ -72,11 +71,7 @@ class Json_Info(TypedDict):  # fix: change name to assignment_info
     language: str
     submitted_files: list[str]
     base_files: NotRequired[list]  # list[str]?
-    question_name: NotRequired[str]
 
-
-# def unique_file_name(file_name, directory) -> str:
-#     if 
 
 def has_zip_files(file_names) -> bool:
     """Checks if a given list of files includes .zip files.
@@ -153,27 +148,26 @@ def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> No
     #     unzip_files(homework_file_paths)
 
 
-def is_type(value: Any, expected_type: type) -> bool:
-    """ Checks value is an instance of the expected type.
-    For lists, also check contained elements
+def is_value_correct(assignment_value, correct_type) -> bool:
+    """ Checks if the type of a given key matches the type of a given value. 
+        If given a list, checks if items inside list matches the type of value.
 
     Args:
-        value (Any): given key
-        expected_type (_type_): type to check key against, ex. str
+        assignment_value (Any): given value
+        correct_type (_type_): type to check value against, ex. str
 
     Returns:
         bool: true if key matches, false if key doesn't match
     """
-
-    if get_origin(expected_type) is list:  # check items inside of list are of correct type
-        expected_type = get_args(expected_type)
-
-        def is_key_type(item_in_list):
-            isinstance(item_in_list, expected_type)
-
-        return isinstance(value, list) and all(map(is_key_type, value))
+    if get_origin(correct_type) is list: # check items inside of list are of correct type
+        correct_type = get_args(correct_type)
+        for item_in_list in assignment_value:
+            if not isinstance(item_in_list, correct_type):
+                return False
     else:
-        return isinstance(value, expected_type)
+        if not isinstance(assignment_value, correct_type):
+            return False
+    return True 
 
 
 def check_json_keys(json_info: Json_Info):
@@ -187,24 +181,27 @@ def check_json_keys(json_info: Json_Info):
         "c", "cc", "java", "ml", "pascal", "ada", "lisp", "scheme", "haskell", "fortran", "ascii", "vhdl", "perl",
         "matlab",
         "python", "mips", "prolog", "spice", "vb", "csharp", "modula2", "a8086", "javascript", "plsql", "verilog")
-    
     error_messages = []
-
-    # TODO: Error messages should be printed to stderr
 
     for position, assignment in enumerate(json_info):
         if 'question_name' in assignment:
             question_name = assignment['question_name']
         else:
-            question_name = position
+            question_name = f"Assignment {position + 1}"
 
-        for key, key_type in key_types.items():  # rename value
-            if get_origin(key_type) is not NotRequired:  # TODO: add method is_required to simplify double negation
+        for key, value in key_types.items():
+            if get_origin(value) is NotRequired:
+                value = (get_args(value))[0]
+                if key in assignment:
+                    if not is_value_correct(assignment[key], value):
+                        wrong_key_err = f'Value of "{key}" is "{assignment[key]}", when it must be of type "{value}" in assignment "{question_name}" or global keys.'
+                        error_messages.append(wrong_key_err)  
+            else:
                 if key not in assignment: # checks if all required keys are in assignment or global scope
                     missing_key_err = f'Required key "{key}" is missing in assignment "{question_name}" or global keys.'
                     error_messages.append(missing_key_err)
-                elif not is_type(assignment[key], key_type): # checks if value is correct
-                    wrong_key_err = f'Value of "{key}" is "{assignment[key]}", when it must be of type "{key_type}" in assignment "{question_name}" or global keys'
+                elif not is_value_correct(assignment[key], value): # checks if value is correct
+                    wrong_key_err = f'Value of "{key}" is "{assignment[key]}", when it must be of type "{value}" in assignment "{question_name}" or global keys.'
                     error_messages.append(wrong_key_err)
                 elif key == "language": # checks if language is one of the supported languages
                     if assignment[key].lower() not in supported_languages:
@@ -215,22 +212,15 @@ def check_json_keys(json_info: Json_Info):
                         invalid_moss_path_err = f'"{assignment[key]}" in assignment "{question_name} is not a valid path.'
                         error_messages.append(invalid_moss_path_err)
 
-            else:  # key is not required
-                key_type = (get_args(key_type))[0]
-                if key in assignment:
-                    if not is_type(assignment[key], key_type):
-                        wrong_key_err = f'Value of "{assignment[key]}" must be of type "{key_type}".'
-                        error_messages.append(wrong_key_err)
-
     if error_messages:
-        print("Your configuration JSON file has these following issues:")
-        print("---------------------------------------------------------")
+        print("Your configuration JSON file has these following issues:", file=sys.stderr)
+        print("---------------------------------------------------------", file=sys.stderr)
         for position, message in enumerate(error_messages):
-            print(f'{position + 1}. {message}')
+            print(f'{position + 1}. {message}', file=sys.stderr)
         exit(1)
 
 
-def json_info_validation(config_data: Config_Data) -> list[Json_Info]:  ## fix: specify what chainmap
+def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     """Checks if configuration data is valid. If valid, returns a list of moss arguments, prioritizing assignment arguments.
 
     Args:
@@ -240,11 +230,11 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:  ## fix: 
         list[ChainMap]: if information is valid, returns a list of keys to be used in moss command
     """
     global_info = copy.copy(config_data)
-    del global_info["assignment_info"]  # TODO: Check for key error as assignment_info may be missing if bad json given
+    if "assignment_info" in global_info:
+        del global_info["assignment_info"]
     global_info = ChainMap(global_info)
 
     filtered_assignment_info = []
-
     for assignment in config_data["assignment_info"]:
         filtered_assignment_info.append(global_info.new_child(assignment))
     
@@ -286,11 +276,11 @@ def get_moss_command(assignment, homework_file_paths: list[str], base_file_paths
     return moss_command
 
 
-def get_json_info(json_path: str) -> Config_Data:  # TODO: str -> os.Pathlike
+def get_json_info(json_path: os.PathLike) -> Config_Data:
     """ Gets configuration info from given JSON file and stores info into a nested dictionary.
 
     Args:
-        json_path (str): path to JSON file containing configuration info
+        json_path (os.PathLike): path to JSON file containing configuration info
 
     Returns:
         Global_Json_Info: nested dictionary with all configuration info from JSON file
@@ -320,7 +310,7 @@ def get_file_paths(desired_files: list[str], starting_path: str) -> list[str]:
     return all_file_paths
 
 
-def run_easy_moss(filtered_assignment_info):  # TODO: Add type hints
+def run_easy_moss(filtered_assignment_info: Json_Info):
     """ Creates and runs a moss command for each assignment.
 
     Args:
@@ -328,14 +318,16 @@ def run_easy_moss(filtered_assignment_info):  # TODO: Add type hints
     """
 
     for assignment in filtered_assignment_info:
-        # temp_dir = tempfile.TemporaryDirectory() #fix
-        # global_temp_dir = temp_dir.name
-        global_temp_dir = "./global" # TODO: make work for real and not just testing
+        temp_dir = tempfile.TemporaryDirectory() #fix
+        global_temp_dir = temp_dir.name
+        # global_temp_dir = "./global" # TODO: make work for real and not just testing
+
         # copies all files from starting path dir to global temp dir
         global_temp_dir = shutil.copytree(assignment["starting_path"], global_temp_dir, dirs_exist_ok=True)
 
         # unzips and flattens files
         all_paths = get_file_paths(["*"], global_temp_dir)
+        
         # copies all files from starting path dir to global temp dir
         # for path in all_paths:
         #     shutil.copy(path, global_temp_dir)
@@ -359,18 +351,18 @@ def main():
 
     try:
         config_data = get_json_info(sys.argv[1])
+    except FileNotFoundError as err:
+        print(f"{err}", file=sys.stderr)
+        exit(1)
+    except PermissionError as err:
+        print(f"{err}", file=sys.stderr)
     except json.decoder.JSONDecodeError as err:  ## fix: specific errors (ValueError, IndexError)
-        print(f"Error: Given file is not properly configured as a JSON file.\n{err}")
-        exit(0)  # TODO: Non zero exit code when program fails to complete
-    # TODO: check for file errors like file not found or permission errors.
+        print(f"Given file is not properly configured as a JSON file.\n{err}", file=sys.stderr)
+        exit(1)
+
     filtered_assignment_info = json_info_validation(config_data)
 
-    # run_easy_moss(filtered_assignment_info)
-
-    # try:
-    #     run_easy_moss(filtered_assignment_info)
-    # finally:
-    #     shutil.rmtree("./global_temp_dir")
+    run_easy_moss(filtered_assignment_info)
 
 
 main()
