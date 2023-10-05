@@ -6,10 +6,9 @@ import tempfile
 import inspect
 import shutil
 import copy
-import zipfile
 from pathlib import Path
 
-from typing import Any, NotRequired, get_args, get_origin
+from typing import NotRequired, get_args, get_origin
 
 try:
     from typing import TypedDict
@@ -25,7 +24,6 @@ from zipfile import ZipFile
 # if moss path exists, check that it is valid
 
 # print to stdout, 2> to text.txt
-# question name + 
 
 # for get all files
 # pass in question name and check if question name is in? question_name + **/* + rest < ex
@@ -65,7 +63,7 @@ def has_zip_files(file_names) -> bool:
         bool: has zip files or doesn't have zip files
     """
     for filename in file_names:
-        if filename.is_zipfile:
+        if filename.endswith(".zip"):
             return True
     return False
 
@@ -81,54 +79,34 @@ def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> No
     # shutil.copy(file_name1, file_name1 + "/..") incompatible with tempdir
     # Directory not empty error when trying to delete the temp directory
     # not initially checking if the zipfile happens to have the same name as another folder in the parent directory
-    # question_name + zipfile + nested diretories + filename for a nested file
+    # question_name + path without temporary directory for a nested file
     # question_name + path for unnested file
 
     for homework_path in homework_file_paths:
-        if zipfile.is_zipfile(homework_path):  # TODO: Add support for tar files?
+        # if zipfile.is_zipfile(homework_path):  # TODO: Add support for tar files?
+        if homework_path.endswith(".zip"):
             with ZipFile(homework_path) as zip_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
-                # temp_dir = homework_path[:-4]
-                # os.mkdir(temp_dir)
                 temp_dir = tempfile.TemporaryDirectory()
 
                 # shutil.move(temp_dir.name, global_temp_dir_name)
                 zip_object.extractall(path=temp_dir.name)
 
-                # print(os.listdir(temp_dir.name), file = sys.stderr)
                 flattened_directory_path = "/".join(homework_path.split("/")[:-1])
                 for path, dir_names, file_names in os.walk(temp_dir.name):
                     # TODO: need to remove temporary directory name from path_with_underscores
-                    path_with_underscores = path.replace(os.path.sep, "_")
+                    path_with_underscores = path.replace(temp_dir.name,"").replace(os.path.sep, "_") #<-No temp dir name
                     for file in file_names:
                         # shutil.move(os.path.join(path, file), os.path.join(temp_dir.name, f'{path_with_underscores}_{file}'))
                         # new_file_name = f'{path_with_underscores}_{file}'
                         # os.rename(file, new_file_name)
-                        print(flattened_directory_path, file=sys.stderr)
                         shutil.move(os.path.join(path, file),
                                     os.path.join(flattened_directory_path, f"{path_with_underscores}_{file}"))
-                        # for path with underscores:
-                        # 
-                # TODO: remove dead commented code if not needed
-                # files_in_zip = get_file_paths(["*"], temp_dir.name)
-                # files_in_parent_folder = get_file_paths(["*"], temp_dir.name + "/..")
-                # #Renaming files
-                # for file_name1 in files_in_zip:
-                #     for file_name2 in files_in_parent_folder:
-                #         if file_name1 == file_name2:
-                #             basename = os.path.basename(file_name1)
-                #             os.rename(file_name1, file_name1[:-len(basename)] + file_name1.replace("/","_") + file_name1[-len(basename):])
-                # #Flattening zip
-                # for file_name1 in files_in_zip:
-                #     shutil.move(file_name1, temp_dir.name + "/..")
-                # os.remove(homework_path) #delete zip file
-
+            os.remove(homework_path) #delete zip file
+            homework_file_paths.remove(homework_path)
     # if the folder still has zip files, run function again (ONLY raises warning as of now)
     if has_zip_files(homework_file_paths):
         print("Warning: There are still nested zipfiles in the specified directory.\n")
-        # TODO: Does this work?
-        # TODO: you should recurse instead as soon as you find a nested zip file, not over everything
-    #     unzip_files(homework_file_paths)
 
 
 def is_value_correct(assignment_value, correct_type) -> bool:
@@ -288,6 +266,10 @@ def get_file_paths(desired_files: list[str], starting_path: str) -> list[str]:
         p = Path(starting_path).glob('**/*' + assignment_name)
         all_file_paths.extend((f'{x}' for x in p if x.is_file()))
 
+    for path in all_file_paths:
+        if "_MACOSX" in path:
+            all_file_paths.remove(path)  # TODO: come up with better way to avoid this file?
+
     return all_file_paths
 
 
@@ -299,9 +281,10 @@ def run_easy_moss(filtered_assignment_info: Json_Info):
     """
 
     for assignment in filtered_assignment_info:
-        temp_dir = tempfile.TemporaryDirectory() #fix
-        global_temp_dir = temp_dir.name
-        # global_temp_dir = "./global" # TODO: make work for real and not just testing
+        # temp_dir = tempfile.TemporaryDirectory()
+        # global_temp_dir = temp_dir.name
+
+        global_temp_dir = "./global" # creates a new non-temporary directory, will be left in working directory
 
         # copies all files from starting path dir to global temp dir
         global_temp_dir = shutil.copytree(assignment["starting_path"], global_temp_dir, dirs_exist_ok=True)
@@ -319,8 +302,8 @@ def run_easy_moss(filtered_assignment_info: Json_Info):
                                              global_temp_dir)  # strings of paths of all .c
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir)
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
-        print(moss_command)
-        # subprocess.run(moss_command)
+        # print(moss_command)
+        subprocess.run(moss_command)
 
 def main():
     if len(sys.argv) != 2:
