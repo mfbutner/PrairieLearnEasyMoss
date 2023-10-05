@@ -6,6 +6,7 @@ import tempfile
 import inspect
 import shutil
 import copy
+import tarfile
 from pathlib import Path
 
 from typing import NotRequired, get_args, get_origin
@@ -21,16 +22,17 @@ from zipfile import ZipFile
 
 # -------NOTES-------
 
-# if moss path exists, check that it is valid
-
-# print to stdout, 2> to text.txt
-
 # for get all files
 # pass in question name and check if question name is in? question_name + **/* + rest < ex
-# old name: homework name, file name
-# new name: add question name, python path to file within zip
-# people might not put zip files inside of zip files
-  
+
+# for putting the question name in front of the files:
+# how would the program know which file belonged to which assignment/question? 
+# also for filtering out the files of each assignment shouldnt the user specify it in moss.json?
+# ex. putting quadratic*.c in moss.json
+# rather than filtering through question name like so: question_name + **/* + rest
+
+# tar files?
+
 class Config_Data(TypedDict):
     starting_path: NotRequired[str]
     moss_path: NotRequired[str]
@@ -68,7 +70,7 @@ def has_zip_files(file_names) -> bool:
     return False
 
 
-def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> None:
+def unzip_files(homework_file_paths: list[str], question_name: str) -> None:
     """Extracts contents of zipfiles into a temporary directory, renames contents of zipfile, flattens contents to parent directory.
 
     Args:
@@ -76,34 +78,41 @@ def unzip_files(homework_file_paths: list[str], global_temp_dir_name: str) -> No
         global_temp_dir_name ([str]): name of the temporary global directory
     """
     # temp folder ex: /var/folders/fx/gtt4zm914w7djxzxg0hgdv140000gn/T/tmpktd1ldnx
-    # shutil.copy(file_name1, file_name1 + "/..") incompatible with tempdir
-    # Directory not empty error when trying to delete the temp directory
-    # not initially checking if the zipfile happens to have the same name as another folder in the parent directory
-    # question_name + path without temporary directory for a nested file
-    # question_name + path for unnested file
+    # question_name + path without temporary directory name
 
     for homework_path in homework_file_paths:
-        # if zipfile.is_zipfile(homework_path):  # TODO: Add support for tar files?
         if homework_path.endswith(".zip"):
             with ZipFile(homework_path) as zip_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
                 temp_dir = tempfile.TemporaryDirectory()
-
-                # shutil.move(temp_dir.name, global_temp_dir_name)
                 zip_object.extractall(path=temp_dir.name)
 
                 flattened_directory_path = "/".join(homework_path.split("/")[:-1])
                 for path, dir_names, file_names in os.walk(temp_dir.name):
-                    # TODO: need to remove temporary directory name from path_with_underscores
                     path_with_underscores = path.replace(temp_dir.name,"").replace(os.path.sep, "_") #<-No temp dir name
                     for file in file_names:
-                        # shutil.move(os.path.join(path, file), os.path.join(temp_dir.name, f'{path_with_underscores}_{file}'))
-                        # new_file_name = f'{path_with_underscores}_{file}'
-                        # os.rename(file, new_file_name)
                         shutil.move(os.path.join(path, file),
-                                    os.path.join(flattened_directory_path, f"{path_with_underscores}_{file}"))
+                                    os.path.join(flattened_directory_path, f"{question_name}_{path_with_underscores}_{file}"))
             os.remove(homework_path) #delete zip file
             homework_file_paths.remove(homework_path)
+
+        #FOR TAR FILES: DOESN'T WORK
+        elif homework_path.endswith("tar.gz"):
+            print("hi")
+            with tarfile.open(homework_path,'r') as tar_object:
+                # Create new folder so we don't clutter the main one (also solves duplicate name issue)
+                temp_dir = tempfile.TemporaryDirectory()
+                tar_object.extractall(path=temp_dir.name)
+
+                flattened_directory_path = "/".join(homework_path.split("/")[:-1])
+                for path, dir_names, file_names in os.walk(temp_dir.name):
+                    path_with_underscores = path.replace(temp_dir.name,"").replace(os.path.sep, "_") #<-No temp dir name
+                    for file in file_names:
+                        shutil.move(os.path.join(path, file),
+                                    os.path.join(flattened_directory_path, f"{question_name}_{path_with_underscores}_{file}"))
+            os.remove(homework_path) #delete zip file
+            homework_file_paths.remove(homework_path)
+
     # if the folder still has zip files, run function again (ONLY raises warning as of now)
     if has_zip_files(homework_file_paths):
         print("Warning: There are still nested zipfiles in the specified directory.\n")
@@ -281,28 +290,24 @@ def run_easy_moss(filtered_assignment_info: Json_Info):
     """
 
     for assignment in filtered_assignment_info:
-        # temp_dir = tempfile.TemporaryDirectory()
-        # global_temp_dir = temp_dir.name
-
-        global_temp_dir = "./global" # creates a new non-temporary directory, will be left in working directory
-
+        temp_dir = tempfile.TemporaryDirectory()
+        global_temp_dir = temp_dir.name
+        
         # copies all files from starting path dir to global temp dir
         global_temp_dir = shutil.copytree(assignment["starting_path"], global_temp_dir, dirs_exist_ok=True)
 
         # unzips and flattens files
+        question_name = assignment["question_name"]
         all_paths = get_file_paths(["*"], global_temp_dir)
-        
-        # copies all files from starting path dir to global temp dir
-        # for path in all_paths:
-        #     shutil.copy(path, global_temp_dir)
-        unzip_files(all_paths, global_temp_dir)
+        print(all_paths)
+        unzip_files(all_paths, question_name)
 
         # TODO: file names need to start with question_name as well
         homework_file_paths = get_file_paths(assignment["submitted_files"],
                                              global_temp_dir)  # strings of paths of all .c
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir)
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
-        # print(moss_command)
+        
         subprocess.run(moss_command)
 
 def main():
