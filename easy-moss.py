@@ -8,9 +8,7 @@ import shutil
 import copy
 import tarfile
 from pathlib import Path
-
 from typing import NotRequired, get_args, get_origin
-
 try:
     from typing import TypedDict
 except:
@@ -18,7 +16,6 @@ except:
 
 from collections import ChainMap
 from zipfile import ZipFile
-
 
 # -------NOTES-------
 
@@ -54,7 +51,6 @@ class Json_Info(TypedDict):
     submitted_files: list[str]
     base_files: NotRequired[list]  # list[str]?
 
-
 def has_zip_files(file_names) -> bool:
     """Checks if a given list of files includes .zip files.
 
@@ -68,7 +64,6 @@ def has_zip_files(file_names) -> bool:
         if filename.endswith(".zip"):
             return True
     return False
-
 
 def unzip_files(homework_file_paths: list[str], question_name: str) -> None:
     """Extracts contents of zipfiles into a temporary directory, renames contents of zipfile, flattens contents to parent directory.
@@ -117,7 +112,6 @@ def unzip_files(homework_file_paths: list[str], question_name: str) -> None:
     if has_zip_files(homework_file_paths):
         print("Warning: There are still nested zipfiles in the specified directory.\n")
 
-
 def is_value_correct(assignment_value, correct_type) -> bool:
     """ Checks if the type of a given key matches the type of a given value. 
         If given a list, checks if items inside list matches the type of value.
@@ -138,7 +132,6 @@ def is_value_correct(assignment_value, correct_type) -> bool:
         if not isinstance(assignment_value, correct_type):
             return False
     return True 
-
 
 def check_json_keys(json_info: Json_Info):
     """Checks if keys given in configuration JSON are of correct type, and that required keys exist in at least one instance in the global or assignment scopes.
@@ -188,7 +181,6 @@ def check_json_keys(json_info: Json_Info):
         for position, message in enumerate(error_messages):
             print(f'{position + 1}. {message}', file=sys.stderr)
         exit(1)
-
 
 def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     """Checks if configuration data is valid. If valid, returns a list of moss arguments, prioritizing assignment arguments.
@@ -243,7 +235,6 @@ def get_moss_command(assignment: Json_Info, homework_file_paths: list[str], base
 
     return moss_command
 
-
 def get_json_info(json_path: os.PathLike) -> Config_Data:
     """ Gets configuration info from given JSON file and stores info into a nested dictionary.
 
@@ -256,7 +247,6 @@ def get_json_info(json_path: os.PathLike) -> Config_Data:
     with open(json_path) as json_file:
         config_data = json.load(json_file)
     return config_data
-
 
 def get_file_paths(desired_files: list[str], starting_path: str) -> list[str]:
     """ Gets paths for all specified files from a starting directory path.
@@ -280,7 +270,6 @@ def get_file_paths(desired_files: list[str], starting_path: str) -> list[str]:
             all_file_paths.remove(path)  # TODO: come up with better way to avoid this file?
 
     return all_file_paths
-
 
 def run_easy_moss(filtered_assignment_info: Json_Info):
     """ Creates and runs a moss command for each assignment.
@@ -327,6 +316,5 @@ def main():
     filtered_assignment_info = json_info_validation(config_data)
 
     run_easy_moss(filtered_assignment_info)
-
 
 main()
