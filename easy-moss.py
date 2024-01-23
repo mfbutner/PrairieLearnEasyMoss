@@ -17,19 +17,6 @@ except:
 from collections import ChainMap
 from zipfile import ZipFile
 
-# -------NOTES-------
-
-# for get all files
-# pass in question name and check if question name is in? question_name + **/* + rest < ex
-
-# for putting the question name in front of the files:
-# how would the program know which file belonged to which assignment/question? 
-# also for filtering out the files of each assignment shouldnt the user specify it in moss.json?
-# ex. putting quadratic*.c in moss.json
-# rather than filtering through question name like so: question_name + **/* + rest
-
-# tar files?
-
 class Config_Data(TypedDict):
     starting_path: NotRequired[str]
     moss_path: NotRequired[str]
@@ -65,7 +52,7 @@ def has_zip_files(file_names) -> bool:
             return True
     return False
 
-def unzip_files(homework_file_paths: list[str], question_name: str) -> None:
+def unzip_files(file_paths: list[str], question_name: str) -> None:
     """Extracts contents of zipfiles into a temporary directory, renames contents of zipfile, flattens contents to parent directory.
 
     Args:
@@ -75,7 +62,10 @@ def unzip_files(homework_file_paths: list[str], question_name: str) -> None:
     # temp folder ex: /var/folders/fx/gtt4zm914w7djxzxg0hgdv140000gn/T/tmpktd1ldnx
     # question_name + path without temporary directory name
 
-    for homework_path in homework_file_paths:
+    # TODO: tar files do not show up inside of the for loop, they are in the list outside of the for loop
+
+    for homework_path in file_paths:
+        print(homework_path)
         if homework_path.endswith(".zip"):
             with ZipFile(homework_path) as zip_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
@@ -89,10 +79,10 @@ def unzip_files(homework_file_paths: list[str], question_name: str) -> None:
                         shutil.move(os.path.join(path, file),
                                     os.path.join(flattened_directory_path, f"{question_name}_{path_with_underscores}_{file}"))
             os.remove(homework_path) #delete zip file
-            homework_file_paths.remove(homework_path)
-
+            file_paths.remove(homework_path)
+            
         #FOR TAR FILES: DOESN'T WORK
-        elif homework_path.endswith("tar.gz"):
+        if homework_path.endswith(".tar.gz"):
             print("hi")
             with tarfile.open(homework_path,'r') as tar_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
@@ -106,11 +96,11 @@ def unzip_files(homework_file_paths: list[str], question_name: str) -> None:
                         shutil.move(os.path.join(path, file),
                                     os.path.join(flattened_directory_path, f"{question_name}_{path_with_underscores}_{file}"))
             os.remove(homework_path) #delete zip file
-            homework_file_paths.remove(homework_path)
+            file_paths.remove(homework_path)
 
     # if the folder still has zip files, run function again (ONLY raises warning as of now)
-    if has_zip_files(homework_file_paths):
-        print("Warning: There are still nested zipfiles in the specified directory.\n")
+    if has_zip_files(file_paths):
+        print("Warning: There are still nested files in the specified directory.\n")
 
 def is_value_correct(assignment_value, correct_type) -> bool:
     """ Checks if the type of a given key matches the type of a given value. 
@@ -176,7 +166,7 @@ def check_json_keys(json_info: Json_Info):
                         error_messages.append(invalid_moss_path_err)
 
     if error_messages:
-        print("Your configuration JSON file has these following issues:", file=sys.stderr)
+        print("Your configuration JSON file has the following issues:", file=sys.stderr)
         print("---------------------------------------------------------", file=sys.stderr)
         for position, message in enumerate(error_messages):
             print(f'{position + 1}. {message}', file=sys.stderr)
@@ -248,7 +238,7 @@ def get_json_info(json_path: os.PathLike) -> Config_Data:
         config_data = json.load(json_file)
     return config_data
 
-def get_file_paths(desired_files: list[str], starting_path: str) -> list[str]:
+def get_file_paths(desired_files: list[str], starting_path: str, question_name: str) -> list[str]:
     """ Gets paths for all specified files from a starting directory path.
 
     Args:
@@ -262,7 +252,10 @@ def get_file_paths(desired_files: list[str], starting_path: str) -> list[str]:
 
     for assignment_name in desired_files:
         assignment_name = assignment_name.lstrip('*')
-        p = Path(starting_path).glob('**/*' + assignment_name)
+        if question_name == "":
+            p = Path(starting_path).glob('**/*' + assignment_name)
+        else:
+            p = Path(starting_path).rglob('*' + question_name + '*' + assignment_name)
         all_file_paths.extend((f'{x}' for x in p if x.is_file()))
 
     for path in all_file_paths:
@@ -279,6 +272,9 @@ def run_easy_moss(filtered_assignment_info: Json_Info):
     """
 
     for assignment in filtered_assignment_info:
+        # TODO: take tempdir portion out of for loop
+        # TODO: check if there are zip files before creating tempdir?
+        # TODO: assume that file is a zip file, unzip file and put everything in a tempdir
         temp_dir = tempfile.TemporaryDirectory()
         global_temp_dir = temp_dir.name
         
@@ -287,14 +283,13 @@ def run_easy_moss(filtered_assignment_info: Json_Info):
 
         # unzips and flattens files
         question_name = assignment["question_name"]
-        all_paths = get_file_paths(["*"], global_temp_dir)
-        print(all_paths)
-        unzip_files(all_paths, question_name)
+        zip_paths = get_file_paths([".zip"], global_temp_dir, "")
+        tar_paths = get_file_paths([".tar.gz"], global_temp_dir, "")
+        unzip_files(zip_paths + tar_paths, question_name)
 
-        # TODO: file names need to start with question_name as well
         homework_file_paths = get_file_paths(assignment["submitted_files"],
-                                             global_temp_dir)  # strings of paths of all .c
-        base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir)
+                                             global_temp_dir, question_name)  # strings of paths of all .c
+        base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir, question_name)
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
         
         subprocess.run(moss_command)
