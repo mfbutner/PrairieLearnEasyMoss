@@ -26,6 +26,25 @@
       "comment": "Problem 1",
       "experimental": false,
       "number_of_matches_to_show": 100
+    },
+    {
+      "question_name": "harder_problem",
+      "language": "java",
+      "submitted_files": [
+        "cool_file.c",
+        "cool_file.h",
+        "*.c"
+      ],
+      "base_files": [
+        "start_file.c",
+        "file_paths_on_this_computer",
+        "some_folder/**"
+      ],
+      "single_variant": true,
+      "max_appearances_before_ignored": 1,
+      "comment": "Problem 1",
+      "experimental": false,
+      "number_of_matches_to_show": 100
     }
   ],
   "usage": "pl_moss assignment_spec.json path_to_best_files1.zip path_to_best_files12.zip ... "
