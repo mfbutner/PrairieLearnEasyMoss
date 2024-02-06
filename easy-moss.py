@@ -62,10 +62,9 @@ def unzip_files(file_paths: list[str], question_name: str) -> None:
     # temp folder ex: /var/folders/fx/gtt4zm914w7djxzxg0hgdv140000gn/T/tmpktd1ldnx
     # question_name + path without temporary directory name
 
-    # TODO: tar files do not show up inside of the for loop, they are in the list outside of the for loop
-
+    #zip files
     for homework_path in file_paths:
-        print(homework_path)
+        #print(homework_path)
         if homework_path.endswith(".zip"):
             with ZipFile(homework_path) as zip_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
@@ -80,10 +79,24 @@ def unzip_files(file_paths: list[str], question_name: str) -> None:
                                     os.path.join(flattened_directory_path, f"{question_name}_{path_with_underscores}_{file}"))
             os.remove(homework_path) #delete zip file
             file_paths.remove(homework_path)
-            
-        #FOR TAR FILES: DOESN'T WORK
-        if homework_path.endswith(".tar.gz"):
-            print("hi")
+
+        #tar files
+        elif homework_path.endswith(".tar.gz"):
+            with tarfile.open(homework_path,'r:gz') as tar_object:
+                # Create new folder so we don't clutter the main one (also solves duplicate name issue)
+                temp_dir = tempfile.TemporaryDirectory()
+                tar_object.extractall(path=temp_dir.name)
+
+                flattened_directory_path = "/".join(homework_path.split("/")[:-1])
+                for path, dir_names, file_names in os.walk(temp_dir.name):
+                    path_with_underscores = path.replace(temp_dir.name,"").replace(os.path.sep, "_") #<-No temp dir name
+                    for file in file_names: # move and rename
+                        print(f"\nTAR FILE EXTRACTED:\n{question_name}_{path_with_underscores}_{file}\n")
+                        shutil.move(os.path.join(path, file),
+                                    os.path.join(flattened_directory_path, f"{question_name}_{path_with_underscores}_{file}"))
+            os.remove(homework_path) #delete tar file
+            file_paths.remove(homework_path)
+        elif homework_path.endswith(".tar"):
             with tarfile.open(homework_path,'r') as tar_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
                 temp_dir = tempfile.TemporaryDirectory()
@@ -92,10 +105,11 @@ def unzip_files(file_paths: list[str], question_name: str) -> None:
                 flattened_directory_path = "/".join(homework_path.split("/")[:-1])
                 for path, dir_names, file_names in os.walk(temp_dir.name):
                     path_with_underscores = path.replace(temp_dir.name,"").replace(os.path.sep, "_") #<-No temp dir name
-                    for file in file_names:
+                    for file in file_names: # move and rename
+                        print(f"\nTAR FILE EXTRACTED:\n{question_name}_{path_with_underscores}_{file}\n")
                         shutil.move(os.path.join(path, file),
                                     os.path.join(flattened_directory_path, f"{question_name}_{path_with_underscores}_{file}"))
-            os.remove(homework_path) #delete zip file
+            os.remove(homework_path) #delete tar file
             file_paths.remove(homework_path)
 
     # if the folder still has zip files, run function again (ONLY raises warning as of now)
