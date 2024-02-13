@@ -7,6 +7,7 @@ import inspect
 import shutil
 import copy
 import tarfile
+import json
 from pathlib import Path
 from typing import NotRequired, get_args, get_origin
 try:
@@ -16,6 +17,7 @@ except:
 
 from collections import ChainMap
 from zipfile import ZipFile
+from jsonschema import validate, RefResolver
 
 class Config_Data(TypedDict):
     starting_path: NotRequired[str]
@@ -24,8 +26,7 @@ class Config_Data(TypedDict):
     number_of_matches_to_show: NotRequired[int]
     max_appearances_before_ignored: NotRequired[int]
     language: NotRequired[str]
-    assignment_info: list  # [dict]
-    question_name: NotRequired[str]
+    assignment_info: list#[dict]
 
 class Json_Info(TypedDict):
     starting_path: str
@@ -35,8 +36,8 @@ class Json_Info(TypedDict):
     max_appearances_before_ignored: NotRequired[int]
     question_name: str
     language: str
-    submitted_files: list[str]
-    base_files: NotRequired[list]  # list[str]?
+    submitted_files: list#[str] ex. this would show up as a str, not a list
+    base_files: NotRequired[list]
 
 def has_zip_files(file_names) -> bool:
     """Checks if a given list of files includes .zip files.
@@ -51,6 +52,7 @@ def has_zip_files(file_names) -> bool:
         if filename.endswith(".zip"):
             return True
     return False
+
 
 def unzip_files(file_paths: list[str], question_name: str) -> None:
     """Extracts contents of zipfiles into a temporary directory, renames contents of zipfile, flattens contents to parent directory.
@@ -116,97 +118,6 @@ def unzip_files(file_paths: list[str], question_name: str) -> None:
     if has_zip_files(file_paths):
         print("Warning: There are still nested files in the specified directory.\n")
 
-def is_value_correct(assignment_value, correct_type) -> bool:
-    """ Checks if the type of a given key matches the type of a given value. 
-        If given a list, checks if items inside list matches the type of value.
-
-    Args:
-        assignment_value (Any): given value
-        correct_type (_type_): type to check value against, ex. str
-
-    Returns:
-        bool: true if key matches, false if key doesn't match
-    """
-    if get_origin(correct_type) is list: # check items inside of list are of correct type
-        correct_type = get_args(correct_type)
-        for item_in_list in assignment_value:
-            if not isinstance(item_in_list, correct_type):
-                return False
-    else:
-        if not isinstance(assignment_value, correct_type):
-            return False
-    return True 
-
-def check_json_keys(json_info: Json_Info):
-    """Checks if keys given in configuration JSON are of correct type, and that required keys exist in at least one instance in the global or assignment scopes.
-
-    Args:
-        json_info (Json_Info): dict of information to be checked
-    """
-    key_types = inspect.get_annotations(Json_Info)
-    supported_languages = (
-        "c", "cc", "java", "ml", "pascal", "ada", "lisp", "scheme", "haskell", "fortran", "ascii", "vhdl", "perl",
-        "matlab",
-        "python", "mips", "prolog", "spice", "vb", "csharp", "modula2", "a8086", "javascript", "plsql", "verilog")
-    error_messages = []
-
-    for position, assignment in enumerate(json_info):
-        if 'question_name' in assignment:
-            question_name = assignment['question_name']
-        else:
-            question_name = f"Assignment {position + 1}"
-
-        for key, value in key_types.items():
-            if get_origin(value) is NotRequired:
-                value = (get_args(value))[0]
-                if key in assignment:
-                    if not is_value_correct(assignment[key], value):
-                        wrong_key_err = f'Value of "{key}" is "{assignment[key]}", when it must be of type "{value}" in assignment "{question_name}" or global keys.'
-                        error_messages.append(wrong_key_err)  
-            else:
-                if key not in assignment: # checks if all required keys are in assignment or global scope
-                    missing_key_err = f'Required key "{key}" is missing in assignment "{question_name}" or global keys.'
-                    error_messages.append(missing_key_err)
-                elif not is_value_correct(assignment[key], value): # checks if value is correct
-                    wrong_key_err = f'Value of "{key}" is "{assignment[key]}", when it must be of type "{value}" in assignment "{question_name}" or global keys.'
-                    error_messages.append(wrong_key_err)
-                elif key == "language": # checks if language is one of the supported languages
-                    if assignment[key].lower() not in supported_languages:
-                        wrong_lang_err = f'Given language "{assignment[key]}" in assignment "{assignment["question_name"]}" is not one of the supported languages.'
-                        error_messages.append(wrong_lang_err) 
-                elif (key == "moss_path") or (key == "starting_path"): # checks if given paths are valid
-                    if not (os.path.isfile(assignment[key]) or os.path.isdir(assignment[key])):
-                        invalid_moss_path_err = f'"{assignment[key]}" in assignment "{question_name} is not a valid path.'
-                        error_messages.append(invalid_moss_path_err)
-
-    if error_messages:
-        print("Your configuration JSON file has the following issues:", file=sys.stderr)
-        print("---------------------------------------------------------", file=sys.stderr)
-        for position, message in enumerate(error_messages):
-            print(f'{position + 1}. {message}', file=sys.stderr)
-        exit(1)
-
-def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
-    """Checks if configuration data is valid. If valid, returns a list of moss arguments, prioritizing assignment arguments.
-
-    Args:
-        config_data (Config_Data): dict of all information in given configuration file
-
-    Returns:
-        list[ChainMap]: if information is valid, returns a list of keys to be used in moss command
-    """
-    global_info = copy.copy(config_data)
-    if "assignment_info" in global_info:
-        del global_info["assignment_info"]
-    global_info = ChainMap(global_info)
-
-    filtered_assignment_info = []
-    for assignment in config_data["assignment_info"]:
-        filtered_assignment_info.append(global_info.new_child(assignment))
-    
-    check_json_keys(filtered_assignment_info)
-
-    return filtered_assignment_info
 
 def get_moss_command(assignment: Json_Info, homework_file_paths: list[str], base_file_paths: list[str]) -> list[str]:
     """Creates a moss command as a string from info specified by user.
@@ -226,7 +137,7 @@ def get_moss_command(assignment: Json_Info, homework_file_paths: list[str], base
     try:
         moss_command.append(assignment["moss_path"])
     except KeyError:
-        moss_command.append("./moss.sh")  # should be path to moss in json, defualt is ./moss.sh or something
+        moss_command.append("./moss.sh")  # should be path to moss in json, defualt is ./moss.sh
 
     moss_command.extend(['-l', (assignment["language"]).lower()])
     moss_command.append('-d')
@@ -239,7 +150,48 @@ def get_moss_command(assignment: Json_Info, homework_file_paths: list[str], base
 
     return moss_command
 
-def get_json_info(json_path: os.PathLike) -> Config_Data:
+
+def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
+    """Checks if configuration data is valid. If valid, returns a list of moss arguments, prioritizing assignment arguments.
+
+    Args:
+        config_data (Config_Data): dict of all information in given configuration file
+
+    Returns:
+        list[ChainMap]: if information is valid, returns a list of keys to be used in moss command
+    """
+    with open("schema-global.json", "r") as global_schema_file:
+        global_schema = json.load(global_schema_file)
+    with open("schema-question.json", "r") as question_schema_file:
+        question_schema = json.load(question_schema_file)
+
+    # resolve somehow
+    resolver = RefResolver.from_schema(question_schema)
+    _schema = resolver.resolve(global_schema)
+
+    # validate config data (moss.json)
+    try:
+        validate(instance=config_data, schema=global_schema)
+        print("Validation successful. JSON data conforms to the schema.")
+    except Exception as e:
+        print("JSON data does not conform to the schema, please fix the following errors:", e)
+        exit(0)
+    
+    global_info = copy.copy(config_data)
+    if "assignment_info" in global_info:
+        del global_info["assignment_info"] # only have global settings in global_info
+    global_info = ChainMap(global_info)
+
+    filtered_assignment_info = []
+    for assignment in config_data["assignment_info"]: 
+        filtered_assignment_info.append(global_info.new_child(assignment))
+
+    print(filtered_assignment_info)
+
+    return filtered_assignment_info
+
+
+def json_to_dict(json_path: os.PathLike) -> Config_Data:
     """ Gets configuration info from given JSON file and stores info into a nested dictionary.
 
     Args:
@@ -251,6 +203,7 @@ def get_json_info(json_path: os.PathLike) -> Config_Data:
     with open(json_path) as json_file:
         config_data = json.load(json_file)
     return config_data
+
 
 def get_file_paths(desired_files: list[str], starting_path: str, question_name: str) -> list[str]:
     """ Gets paths for all specified files from a starting directory path.
@@ -278,7 +231,7 @@ def get_file_paths(desired_files: list[str], starting_path: str, question_name: 
 
     return all_file_paths
 
-def run_easy_moss(filtered_assignment_info: Json_Info):
+def run_easy_moss(filtered_assignment_info: Json_Info) -> str:
     """ Creates and runs a moss command for each assignment.
 
     Args:
@@ -306,15 +259,16 @@ def run_easy_moss(filtered_assignment_info: Json_Info):
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir, question_name)
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
         
-        subprocess.run(moss_command)
+
+        return(moss_command)
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: ./easy-moss <path to json config file>")
+    if len(sys.argv) != 3:
+        print("Usage: ./easy-moss <path to json config file> <test1 or test2 if testing>")
         exit(0)
 
     try:
-        config_data = get_json_info(sys.argv[1])
+        config_data = json_to_dict(sys.argv[1])
     except FileNotFoundError or PermissionError or ValueError or IndexError as err:
         print(f"{err}", file=sys.stderr)
         exit(1)
@@ -323,7 +277,13 @@ def main():
         exit(1)
 
     filtered_assignment_info = json_info_validation(config_data)
+    moss_command = run_easy_moss(filtered_assignment_info)
 
-    run_easy_moss(filtered_assignment_info)
+    if sys.argv[2] == "test1":
+        print(moss_command)
+    elif sys.argv[2] == "test2":
+        print("OMG HII :)")
+    else:
+        subprocess.run(moss_command)
 
 main()

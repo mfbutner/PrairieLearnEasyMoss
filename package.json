@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "json-schema-resolver": "^2.0.0"
+  }
+}
