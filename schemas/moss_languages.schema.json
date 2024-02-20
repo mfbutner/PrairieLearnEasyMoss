@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/languages.moss.json",
+  "title": "MOSS Supported Languages",
+  "enum": [
+    "a8086",
+    "ada",
+    "ascii",
+    "c",
+    "cc",
+    "csharp",
+    "fortran",
+    "haskell",
+    "java",
+    "javascript",
+    "lisp",
+    "matlab",
+    "mips",
+    "ml",
+    "modula2",
+    "pascal",
+    "perl",
+    "plsql",
+    "prolog",
+    "python",
+    "scheme",
+    "spice",
+    "vb",
+    "verilog",
+    "vhdl"
+  ]
+}
