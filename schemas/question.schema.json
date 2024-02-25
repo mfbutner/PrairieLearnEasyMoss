@@ -46,13 +46,13 @@
       "type": "array",
       "uniqueItems": true,
       "items": {
-        "type": "string"
+        "type": "string",
+        "minLength" : 1
       }
     }
   },
   "required": [
     "question_name",
-    "question_path",
     "submitted_files"
   ]
 }
