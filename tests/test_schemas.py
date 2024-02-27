@@ -77,9 +77,11 @@ class TestSchemas(unittest.TestCase):
     def setUpClass(cls):
         super().setUpClass()
         with (open('../schemas/moss_languages.schema.json') as language_schema_file,
+              open('../schemas/question_overridables.schema.json') as question_overridables_file,
               open('../schemas/question.schema.json') as question_schema_file,
               open('../schemas/easy_moss_config.schema.json') as easy_moss_schema_file):
             cls.languages_schema = json.load(language_schema_file)
+            cls.question_overridables_schema = json.load(question_overridables_file)
             cls.question_schema = json.load(question_schema_file)
             cls.easy_moss_schema = json.load(easy_moss_schema_file)
             cls.registry = referencing.Registry().with_resources([
@@ -87,12 +89,15 @@ class TestSchemas(unittest.TestCase):
                     'https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/languages.moss.json',
                     referencing.Resource.from_contents(cls.languages_schema)),
                 ('urn:moss_languages', referencing.Resource.from_contents(cls.languages_schema)),
+                ('https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/question_overridables.schema.json',
+                 referencing.Resource.from_contents(cls.question_overridables_schema)),
+                ('urn:question_overridables', referencing.Resource.from_contents(cls.question_overridables_schema)),
                 ('https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/question.schema.json',
                  referencing.Resource.from_contents(cls.question_schema)),
                 ('urn:question', referencing.Resource.from_contents(cls.question_schema))
             ])
 
-    @hypothesis.settings(max_examples=10_000)
+    @hypothesis.settings(max_examples=10_000, deadline=None)
     @hypothesis.given(question_json)
     def test_valid_question_specifications(self, question):
         jsonschema.validate(question, self.question_schema, registry=self.registry)
@@ -113,5 +118,3 @@ class TestSchemas(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-
