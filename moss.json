@@ -2,15 +2,16 @@
   "assignment_path": "./Homework3",
   "moss_path": "./moss.sh",
   "single_variant": true,
-  "comment": "My comment",
-  "max_appearances_before_ignored": 900000,
+  "global_comment": "Problem 1",
+  "global_max_appearances": 900000,
   "experimental": false,
-  "number_of_matches_to_show": 100,
-  "language": "c",
+  "global_number_of_matches_to_show": 100,
+  "global_language": "c",
   "assignment_info": [
     {
       "question_name": "programming_problem",
-      "language": "java",
+      "nested_comment": "nested comment",
+      "nested_language": "java",
       "submitted_files": [
         "cool_file.c",
         "cool_file.h",
@@ -22,14 +23,13 @@
         "some_folder/**"
       ],
       "single_variant": true,
-      "max_appearances_before_ignored": 1,
-      "comment": "Problem 1",
+      "nested_max_appearances": 1,
       "experimental": false,
-      "number_of_matches_to_show": 100
+      "nested_number_of_matches_to_show": 100
     },
     {
       "question_name": "harder_problem",
-      "language": "java",
+      "nested_language": "java",
       "submitted_files": [
         "cool_file.c",
         "cool_file.h",
@@ -41,10 +41,10 @@
         "some_folder/**"
       ],
       "single_variant": true,
-      "max_appearances_before_ignored": 1,
-      "comment": "Problem 1",
+      "nested_max_appearances": 1,
+      "nested_comment": "nested comment2",
       "experimental": false,
-      "number_of_matches_to_show": 100
+      "nested_number_of_matches_to_show": 100
     }
   ],
   "usage": "pl_moss assignment_spec.json path_to_best_files1.zip path_to_best_files12.zip ... "

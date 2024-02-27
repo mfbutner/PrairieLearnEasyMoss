@@ -191,9 +191,13 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     try:
         validate(instance=config_data, schema=schema)
         print("Validation successful. JSON data conforms to the schema!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        exit(0)
     except Exception as e:
         print("JSON data does not conform to the schema, please fix the following errors:", e)
         exit(0)
+    # COMMENTS:
+    #   question_path never used?
+    #   validate single_variant and experimental in schema.json later
     
     global_info = copy.copy(config_data)
     if "assignment_info" in global_info:
