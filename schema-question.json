@@ -1,6 +1,6 @@
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "title": "Easy Moss Global Schema",
+    "$schema": "https://json-schema.org/draft/2024-02/schema-question",
+    "title": "Easy Moss Question Schema",
     "type": "object",
     "properties": {
         "question_name": {

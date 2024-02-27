@@ -1,5 +1,5 @@
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$schema": "https://json-schema.org/draft/2024-02/schema",
     "title": "Easy Moss Global Schema",
     "type": "object",
     "properties": {

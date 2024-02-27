@@ -17,7 +17,9 @@ except:
 
 from collections import ChainMap
 from zipfile import ZipFile
-from jsonschema import validate, RefResolver
+from jsonschema import validate
+from referencing import Registry, Resource
+# USER MUST HAVE JSON SCHEMA INSTALLED
 
 class Config_Data(TypedDict):
     starting_path: NotRequired[str]
@@ -160,19 +162,35 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     Returns:
         list[ChainMap]: if information is valid, returns a list of keys to be used in moss command
     """
-    with open("schema-global.json", "r") as global_schema_file:
-        global_schema = json.load(global_schema_file)
-    with open("schema-question.json", "r") as question_schema_file:
-        question_schema = json.load(question_schema_file)
+    with open("schema.json", "r") as global_schema_file:
+        schema = json.load(global_schema_file)
+    # with open("schema-question.json", "r") as question_schema_file:
+    #     question_schema = json.load(question_schema_file)
 
-    # resolve somehow
-    resolver = RefResolver.from_schema(question_schema)
-    _schema = resolver.resolve(global_schema)
+    # make resource (don't need?)
+    # schema = Resource.from_contents(
+    #     {
+    #         "$schema": "https://json-schema.org/draft/2024-02/schema"
+    #         "type": "object",
+    #         #"minimum": 0,
+    #     },
+    # )
+        
+    # make registry
+    registry = Registry().with_resources(
+        [
+            ("https://json-schema.org/draft/2024-02/schema", schema),
+            # ("Easy Moss Global Schema", schema),
+        ]
+    )
+    #OLD
+    # resolver = RefResolver.from_schema(question_schema)
+    # _schema = resolver.resolve(global_schema)
 
     # validate config data (moss.json)
     try:
-        validate(instance=config_data, schema=global_schema)
-        print("Validation successful. JSON data conforms to the schema.")
+        validate(instance=config_data, schema=schema)
+        print("Validation successful. JSON data conforms to the schema!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     except Exception as e:
         print("JSON data does not conform to the schema, please fix the following errors:", e)
         exit(0)
