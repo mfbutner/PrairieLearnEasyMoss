@@ -11,14 +11,16 @@
       "properties": {
         "question_name": {
           "description": "The name of the question in Prairie Learn",
-          "type": "string"
+          "type": "string",
+          "minLength" : 1
         },
         "submitted_files": {
           "description": "A list of glob patterns matching the names of the files the students submitted",
           "type": "array",
           "uniqueItems": true,
           "items": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "minItems": 1
         },

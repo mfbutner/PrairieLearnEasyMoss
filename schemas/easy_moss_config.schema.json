@@ -12,6 +12,7 @@
           "description": "Information about each individual assignment. If a config option appears at both the top level and an assignment, the assignment's value will overrider the top level default.",
           "type": "array",
           "minItems": 1,
+          "uniqueItems" : true,
           "items": {
             "$ref": "urn:question"
           }
