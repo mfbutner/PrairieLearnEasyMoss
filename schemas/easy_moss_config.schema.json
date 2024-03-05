@@ -3,7 +3,7 @@
   "title": "Easy Moss Global Schema",
   "allOf": [
     {
-      "$id": "https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/question_overridables.schema.json"
+      "$id": "https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/question_overridables.schema.json"      
     },
     {
       "type": "object",
@@ -31,7 +31,7 @@
           },
           "then": {
             "$comment": "Purposefully left empty because if the required property exists the rest of the schema already specifies what is a valid value."
-          },
+                    },
           "else": {
             "properties": {
               "assignment_info": {

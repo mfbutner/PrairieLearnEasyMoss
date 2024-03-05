@@ -14,11 +14,12 @@ try:
     from typing import TypedDict
 except:
     from typing_extensions import TypedDict
-
 from collections import ChainMap
 from zipfile import ZipFile
 from jsonschema import validate
 from referencing import Registry, Resource
+
+# TODO: difficulty importing jsonschema through wsl
 
 class Config_Data(TypedDict):
     starting_path: NotRequired[str]
@@ -176,7 +177,6 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     try:
         validate(instance=config_data, schema=global_schema)
         print("Validation successful. JSON data conforms to the schema.")
-        exit(0)
     except Exception as e:
         print("JSON data does not conform to the schema, please fix the following errors:", e)
         exit(0)
@@ -190,7 +190,7 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     for assignment in config_data["assignment_info"]: 
         filtered_assignment_info.append(global_info.new_child(assignment))
 
-    print(filtered_assignment_info)
+    #print(filtered_assignment_info)
 
     return filtered_assignment_info
 
@@ -241,16 +241,14 @@ def run_easy_moss(filtered_assignment_info: Json_Info) -> str:
     Args:
         config_data (Json_Info): all configuration data from given JSON file
     """
-
     for assignment in filtered_assignment_info:
         # TODO: take tempdir portion out of for loop
-        # TODO: check if there are zip files before creating tempdir?
-        # TODO: assume that file is a zip file, unzip file and put everything in a tempdir
         temp_dir = tempfile.TemporaryDirectory()
         global_temp_dir = temp_dir.name
         
         # copies all files from starting path dir to global temp dir
-        global_temp_dir = shutil.copytree(assignment["starting_path"], global_temp_dir, dirs_exist_ok=True)
+        # TODO: may cause issues when question_path is not the same as the assignment_path.
+        global_temp_dir = shutil.copytree(assignment["assignment_path"], global_temp_dir, dirs_exist_ok=True)
 
         # unzips and flattens files
         question_name = assignment["question_name"]
@@ -261,6 +259,7 @@ def run_easy_moss(filtered_assignment_info: Json_Info) -> str:
         homework_file_paths = get_file_paths(assignment["submitted_files"],
                                              global_temp_dir, question_name)  # strings of paths of all .c
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir, question_name)
+        print(homework_file_paths)
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
         
 
@@ -283,11 +282,7 @@ def main():
     filtered_assignment_info = json_info_validation(config_data)
     moss_command = run_easy_moss(filtered_assignment_info)
 
-    if sys.argv[2] == "test1":
-        print(moss_command)
-    elif sys.argv[2] == "test2":
-        print("OMG HII :)")
-    else:
-        subprocess.run(moss_command)
+    print(moss_command)
+    subprocess.run(moss_command)
 
 main()
