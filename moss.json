@@ -25,7 +25,8 @@
       "max_appearances_before_ignored": 1,
       "comment": "Problem 1",
       "experimental": false,
-      "number_of_matches_to_show": 100
+      "number_of_matches_to_show": 100,
+      "question_path": "./Homework3"
     },
     {
       "question_name": "harder_problem",
@@ -44,7 +45,8 @@
       "max_appearances_before_ignored": 1,
       "comment": "Problem 1",
       "experimental": false,
-      "number_of_matches_to_show": 100
+      "number_of_matches_to_show": 100,
+      "question_path": "./Homework3"
     }
   ],
   "usage": "pl_moss assignment_spec.json path_to_best_files1.zip path_to_best_files12.zip ... "

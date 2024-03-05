@@ -17,7 +17,8 @@ except:
 
 from collections import ChainMap
 from zipfile import ZipFile
-from jsonschema import validate, RefResolver
+from jsonschema import validate
+from referencing import Registry, Resource
 
 class Config_Data(TypedDict):
     starting_path: NotRequired[str]
@@ -160,19 +161,22 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     Returns:
         list[ChainMap]: if information is valid, returns a list of keys to be used in moss command
     """
-    with open("schema-global.json", "r") as global_schema_file:
+    with open("./schemas/easy_moss_config.schema.json", "r") as global_schema_file:
         global_schema = json.load(global_schema_file)
-    with open("schema-question.json", "r") as question_schema_file:
-        question_schema = json.load(question_schema_file)
+    # with open("schema-question.json", "r") as question_schema_file:
+    #     question_schema = json.load(question_schema_file)
 
-    # resolve somehow
-    resolver = RefResolver.from_schema(question_schema)
-    _schema = resolver.resolve(global_schema)
+    registry = Registry().with_resources(
+        [
+            ("https://json-schema.org/draft/2020-12/schema", global_schema),
+        ]
+    )
 
     # validate config data (moss.json)
     try:
         validate(instance=config_data, schema=global_schema)
         print("Validation successful. JSON data conforms to the schema.")
+        exit(0)
     except Exception as e:
         print("JSON data does not conform to the schema, please fix the following errors:", e)
         exit(0)

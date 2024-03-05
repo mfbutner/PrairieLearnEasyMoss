@@ -22,7 +22,7 @@
     },
     "language": {
       "description": "The language the problem is in",
-      "$ref": "urn:moss_languages"
+      "$id": "https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/languages.moss.json"
     },
     "max_appearances": {
       "description": "The maximum number of times a code segment can appear before it is ignored. If a code segment appears many times it is likely to be the result of legitimate sharing",

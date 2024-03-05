@@ -3,7 +3,7 @@
   "title": "Easy Moss Global Schema",
   "allOf": [
     {
-      "$ref": "urn:question_overridables"
+      "$id": "https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/question_overridables.schema.json"
     },
     {
       "type": "object",
@@ -14,7 +14,7 @@
           "minItems": 1,
           "uniqueItems" : true,
           "items": {
-            "$ref": "urn:question"
+            "$id": "https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/question.schema.json"
           }
         }
       },
