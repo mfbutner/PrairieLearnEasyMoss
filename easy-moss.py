@@ -16,10 +16,15 @@ except:
     from typing_extensions import TypedDict
 from collections import ChainMap
 from zipfile import ZipFile
+import jsonschema
 from jsonschema import validate
 from referencing import Registry, Resource
+from time import sleep
+from tqdm import tqdm
 
 # TODO: difficulty importing jsonschema through wsl
+# KEEP IN MIND:
+# -assumes that the homework files start with question name!
 
 class Config_Data(TypedDict):
     starting_path: NotRequired[str]
@@ -139,6 +144,7 @@ def get_moss_command(assignment: Json_Info, homework_file_paths: list[str], base
     try:
         moss_command.append(assignment["moss_path"])
     except KeyError:
+        print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
         moss_command.append("./moss.sh")  # should be path to moss in json, defualt is ./moss.sh
 
     moss_command.extend(['-l', (assignment["language"]).lower()])
@@ -173,12 +179,15 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
         ]
     )
 
-    # validate config data (moss.json)
+    # JSON SCHEMA
     try:
         validate(instance=config_data, schema=global_schema)
         print("Validation successful. JSON data conforms to the schema.")
     except Exception as e:
-        print("JSON data does not conform to the schema, please fix the following errors:", e)
+        print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
+        if e.cause == None:
+            print("JSON data does not conform to the schema, please fix the following errors:", f'{e.validator_value} is missing or has incorrect type in {e.json_path}.')
+        #TODO: type errors aren't being validated by jsonschema!
         exit(0)
     
     global_info = copy.copy(config_data)
@@ -225,7 +234,7 @@ def get_file_paths(desired_files: list[str], starting_path: str, question_name: 
         assignment_name = assignment_name.lstrip('*')
         if question_name == "":
             p = Path(starting_path).glob('**/*' + assignment_name)
-        else:
+        else: #HERE assumes that the homework files start with question name!!!
             p = Path(starting_path).rglob('*' + question_name + '*' + assignment_name)
         all_file_paths.extend((f'{x}' for x in p if x.is_file()))
 
@@ -235,13 +244,14 @@ def get_file_paths(desired_files: list[str], starting_path: str, question_name: 
 
     return all_file_paths
 
-def run_easy_moss(filtered_assignment_info: Json_Info) -> str:
+def run_easy_moss(filtered_assignment_info: Json_Info) -> None:
     """ Creates and runs a moss command for each assignment.
 
     Args:
         config_data (Json_Info): all configuration data from given JSON file
     """
-    for assignment in filtered_assignment_info:
+    for assignment in tqdm(filtered_assignment_info):
+        print(f'\033[92m\033[1m############################ Checking {(assignment["question_name"])} ✅ ############################\033[1;37m')
         # TODO: take tempdir portion out of for loop
         temp_dir = tempfile.TemporaryDirectory()
         global_temp_dir = temp_dir.name
@@ -259,11 +269,14 @@ def run_easy_moss(filtered_assignment_info: Json_Info) -> str:
         homework_file_paths = get_file_paths(assignment["submitted_files"],
                                              global_temp_dir, question_name)  # strings of paths of all .c
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir, question_name)
-        print(homework_file_paths)
+
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
         
+        #TODO: this loop is going once so it actually isn't running all assignments
+        #return(moss_command)
+        #fixed
 
-        return(moss_command)
+        subprocess.run(moss_command)
 
 def main():
     if len(sys.argv) != 3:
@@ -273,16 +286,15 @@ def main():
     try:
         config_data = json_to_dict(sys.argv[1])
     except FileNotFoundError or PermissionError or ValueError or IndexError as err:
+        print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
         print(f"{err}", file=sys.stderr)
         exit(1)
     except json.decoder.JSONDecodeError as err:
+        print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
         print(f"Given file is not properly configured as a JSON file.\n{err}", file=sys.stderr)
         exit(1)
 
     filtered_assignment_info = json_info_validation(config_data)
     moss_command = run_easy_moss(filtered_assignment_info)
-
-    print(moss_command)
-    subprocess.run(moss_command)
 
 main()

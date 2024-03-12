@@ -11,11 +11,7 @@
     {
       "question_name": "programming_problem",
       "language": "java",
-      "submitted_files": [
-        "cool_file.c",
-        "cool_file.h",
-        "*.c"
-      ],
+      "submitted_files": 1,
       "base_files": [
         "start_file.c",
         "file_paths_on_this_computer",
