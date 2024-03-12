@@ -180,13 +180,14 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     )
 
     # JSON SCHEMA
-    try:
-        validate(instance=config_data, schema=global_schema)
+    try: #TODO: check only moss.json
+        validate(instance=config_data, schema=global_schema, registry=registry)
         print("Validation successful. JSON data conforms to the schema.")
-    except Exception as e:
+    except jsonschema.exceptions.ValidationError as e:
         print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
-        if e.cause == None:
-            print("JSON data does not conform to the schema, please fix the following errors:", f'{e.validator_value} is missing or has incorrect type in {e.json_path}.')
+        if e.cause is None:
+            print("JSON data does not conform to the schema, please fix the following errors:", f'{e.validator_value} is missing in {e.json_path}.')
+        #if e.cause == 
         #TODO: type errors aren't being validated by jsonschema!
         exit(0)
     
@@ -250,7 +251,7 @@ def run_easy_moss(filtered_assignment_info: Json_Info) -> None:
     Args:
         config_data (Json_Info): all configuration data from given JSON file
     """
-    for assignment in tqdm(filtered_assignment_info):
+    for assignment in filtered_assignment_info:
         print(f'\033[92m\033[1m############################ Checking {(assignment["question_name"])} ✅ ############################\033[1;37m')
         # TODO: take tempdir portion out of for loop
         temp_dir = tempfile.TemporaryDirectory()
@@ -268,13 +269,10 @@ def run_easy_moss(filtered_assignment_info: Json_Info) -> None:
 
         homework_file_paths = get_file_paths(assignment["submitted_files"],
                                              global_temp_dir, question_name)  # strings of paths of all .c
+        #TODO: ASSUMES it always exists
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir, question_name)
 
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)
-        
-        #TODO: this loop is going once so it actually isn't running all assignments
-        #return(moss_command)
-        #fixed
 
         subprocess.run(moss_command)
 

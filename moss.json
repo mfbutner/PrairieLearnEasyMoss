@@ -11,7 +11,11 @@
     {
       "question_name": "programming_problem",
       "language": "java",
-      "submitted_files": 1,
+      "submitted_files": [
+        "cool_file.c",
+        "cool_file.h",
+        "*.c"
+      ],
       "base_files": [
         "start_file.c",
         "file_paths_on_this_computer",
@@ -21,8 +25,8 @@
       "max_appearances_before_ignored": 1,
       "comment": "Problem 1",
       "experimental": false,
-      "number_of_matches_to_show": 100,
-      "question_path": "./Homework3"
+      "number_of_matches_to_show": 100
+
     },
     {
       "question_name": "harder_problem",
