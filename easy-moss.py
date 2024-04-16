@@ -17,12 +17,11 @@ except:
 from collections import ChainMap
 from zipfile import ZipFile
 import jsonschema
+import referencing
 from jsonschema import validate
 from referencing import Registry, Resource
 from time import sleep
-from tqdm import tqdm
 
-# TODO: difficulty importing jsonschema through wsl
 # KEEP IN MIND:
 # -assumes that the homework files start with question name!
 
@@ -168,27 +167,37 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     Returns:
         list[ChainMap]: if information is valid, returns a list of keys to be used in moss command
     """
-    with open("./schemas/easy_moss_config.schema.json", "r") as global_schema_file:
+    with (open("./schemas/easy_moss_config.schema.json", "r") as global_schema_file,
+        open("./schemas/moss_languages.schema.json", "r") as languages_schema_file,
+        open("./schemas/question_overridables.schema.json", "r") as question_overridables_file,
+        open("./schemas/question.schema.json", "r") as question_schema_file):    
+        languages_schema = json.load(languages_schema_file)
+        question_overridables = json.load(question_overridables_file)
+        question_schema = json.load(question_schema_file)
         global_schema = json.load(global_schema_file)
-    # with open("schema-question.json", "r") as question_schema_file:
-    #     question_schema = json.load(question_schema_file)
 
-    registry = Registry().with_resources(
-        [
-            ("https://json-schema.org/draft/2020-12/schema", global_schema),
-        ]
-    )
+        schema_registry = Registry().with_resources(
+            [
+                #("https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/easy_moss_config.schema.json", referencing.Resource.from_contents(global_schema)),
+                ("https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/languages.moss.json", referencing.Resource.from_contents(languages_schema)),
+                ('urn:moss_languages', referencing.Resource.from_contents(languages_schema)),
+                ("https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/question_overridables.schema.json", referencing.Resource.from_contents(question_overridables)),
+                ('urn:question_overridables', referencing.Resource.from_contents(question_overridables)),
+                ("https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/question.schema.json", referencing.Resource.from_contents(question_schema)),
+                ('urn:question', referencing.Resource.from_contents(question_schema))
+            ]
+        )
 
     # JSON SCHEMA
     try: #TODO: check only moss.json
-        validate(instance=config_data, schema=global_schema, registry=registry)
+        validate(config_data, global_schema, registry=schema_registry)
         print("Validation successful. JSON data conforms to the schema.")
     except jsonschema.exceptions.ValidationError as e:
         print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
-        if e.cause is None:
+        if e.cause is None: #TODO: e.cause is always None
             print("JSON data does not conform to the schema, please fix the following errors:", f'{e.validator_value} is missing in {e.json_path}.')
-        #if e.cause == 
-        #TODO: type errors aren't being validated by jsonschema!
+        else:
+            print(e.cause)
         exit(0)
     
     global_info = copy.copy(config_data)
