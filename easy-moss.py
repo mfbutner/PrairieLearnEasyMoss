@@ -19,9 +19,11 @@ from zipfile import ZipFile
 import jsonschema
 import referencing
 from jsonschema import validate
+from jsonschema.exceptions import ErrorTree
 from referencing import Registry, Resource
 from time import sleep
-
+from jsonschema.exceptions import ErrorTree
+from jsonschema.protocols import Validator
 # KEEP IN MIND:
 # -assumes that the homework files start with question name!
 
@@ -187,18 +189,54 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
                 ('urn:question', referencing.Resource.from_contents(question_schema))
             ]
         )
-
-    # JSON SCHEMA
-    try: #TODO: check only moss.json
-        validate(config_data, global_schema, registry=schema_registry)
+    # JSON SCHEMA VALIDATION
+    #error_tree = ErrorTree(v.iter_errors(instance))
+    v = jsonschema.Draft7Validator(registry = schema_registry, schema = global_schema)
+    errors = list(v.iter_errors(config_data))
+    if (len(errors) == 0):
+        validate(config_data, global_schema, registry = schema_registry) #TODO: move to validator to call v.iter_errors and get all errors
         print("Validation successful. JSON data conforms to the schema.")
-    except jsonschema.exceptions.ValidationError as e:
+    else:
         print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
-        if e.cause is None: #TODO: e.cause is always None
-            print("JSON data does not conform to the schema, please fix the following errors:", f'{e.validator_value} is missing in {e.json_path}.')
-        else:
-            print(e.cause)
+        print(f'JSON data does not conform to the schema, please fix the following errors:\n')
+        tree = ErrorTree(v.iter_errors(config_data))
+    
+
+        for i in range(1,53): 
+            print(i)
+            if (i in tree) == True:
+                print("hi")
+
+        if (9 in tree) == True:
+            print(f"27 is wrong")
+
+        # num_json_lines = 53
+        # for line in range(num_json_lines):
+        #     print (line)
+        #     if (int(line) in tree) == True:
+        #         print(f"{line} is wrong")
+
+        for e in sorted(v.iter_errors(config_data), key=str):
+            if e.cause is None: #TODO: e.cause is always None (look at error trees; missing key, wrong type, length; also show line where it is located)
+                print(f'- {e.validator_value} is missing in {(e.json_path).replace("$","").lstrip(".")}. {e.message}.')
+            else:
+                print(e.cause)
         exit(0)
+
+    # try:
+    #     validate(config_data, global_schema, registry = schema_registry) #TODO: move to validator to call v.iter_errors and get all errors
+    #     print("Validation successful. JSON data conforms to the schema.")
+    # except jsonschema.exceptions.ValidationError as e:
+    #     print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
+    #     print(f'JSON data does not conform to the schema, please fix the following errors:\n')
+        
+    #     tree = ErrorTree(e.message)
+
+    #     if e.cause is None: #TODO: e.cause is always None (look at error trees; missing key, wrong type, length; also show line where it is located)
+    #         print(f'- {e.validator_value} is missing in {(e.json_path).replace("$","").replace(".","")}.')
+    #     else:
+    #         print(e.cause)
+    #     exit(0)
     
     global_info = copy.copy(config_data)
     if "assignment_info" in global_info:
