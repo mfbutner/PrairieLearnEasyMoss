@@ -324,12 +324,15 @@ def run_easy_moss(filtered_assignment_info: Json_Info) -> None:
         subprocess.run(moss_command)
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: ./easy-moss <path to json config file> <test1 or test2 if testing>")
-        exit(0)
+    for count, argument in enumerate(sys.argv):
+        if argument == "easy-moss.py":
+            if argument[count + 1] == "moss.json":
+                break
+        print("Usage: ./easy-moss <path to json config file>")
+        exit(0)       
 
     try:
-        config_data = json_to_dict(sys.argv[1])
+        config_data = json_to_dict(sys.argv[count + 1])
     except FileNotFoundError or PermissionError or ValueError or IndexError as err:
         print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
         print(f"{err}", file=sys.stderr)

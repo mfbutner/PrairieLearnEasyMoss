@@ -1,10 +1,7 @@
 {
-  "assignment_path": "./Homework3",
-  "moss_path": "./moss.sh",
-  "single_variant": true,
+  "question_path": "./Homework3",
   "comment": "My comment",
-  "max_appearances_before_ignored": 900000,
-  "experimental": false,
+  "max_appearances": 900000,
   "number_of_matches_to_show": 100,
   "language": "c",
   "assignment_info": [
@@ -21,11 +18,10 @@
         "file_paths_on_this_computer",
         "some_folder/**"
       ],
-      "single_variant": true,
-      "max_appearances_before_ignored": 1,
+      "max_appearances": 1,
       "comment": "Problem 1",
-      "experimental": false,
-      "number_of_matches_to_show": "hi"
+      "number_of_matches_to_show": 100,
+      "question_path": "./Homework3"
     },
     {
       "question_name": "harder_problem",
@@ -40,14 +36,10 @@
         "file_paths_on_this_computer",
         "some_folder/**"
       ],
-      "single_variant": true,
-      "max_appearances_before_ignored": 1,
+      "max_appearances": 1,
       "comment": "Problem 1",
-      "experimental": false,
-      "number_of_matches_to_show": 100,
-      "question_path": "./Homework3"
+      "number_of_matches_to_show": 100
     }
-  ],
-  "usage": "pl_moss assignment_spec.json path_to_best_files1.zip path_to_best_files12.zip ... "
+  ]
  }
  
