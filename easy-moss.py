@@ -325,12 +325,12 @@ def run_easy_moss(filtered_assignment_info: Json_Info) -> None:
 
 def main():
     for count, argument in enumerate(sys.argv):
-        if sys.argv[count] == "easy-moss.py":
-                if sys.argv[count + 1] == "moss.json":
-                    break
-                else:
-                    print("Usage: ./easy-moss <path to json config file>")
-                    exit(0)       
+        if argument.endswith("easy-moss.py"):
+            if sys.argv[count + 1].endswith("moss.json"):
+                break
+            else:
+                print("Usage: ./easy-moss <path to json config file>")
+                exit(0)       
 
     try:
         config_data = json_to_dict(sys.argv[count + 1])
@@ -344,6 +344,6 @@ def main():
         exit(1)
 
     filtered_assignment_info = json_info_validation(config_data)
-    moss_command = run_easy_moss(filtered_assignment_info)
+    run_easy_moss(filtered_assignment_info)
 
 main()
