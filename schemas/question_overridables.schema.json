@@ -30,5 +30,6 @@
       "minimum": 1,
       "default": 10
     }
-  }
+  }, 
+  "unevaluatedProperties": false
 }
