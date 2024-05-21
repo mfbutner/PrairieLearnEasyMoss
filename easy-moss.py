@@ -8,6 +8,7 @@ import shutil
 import copy
 import tarfile
 import json
+import jsonschema
 from pathlib import Path
 from typing import NotRequired, get_args, get_origin
 try:
@@ -177,8 +178,9 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     try:
         validate(instance=config_data, schema=global_schema)
         print("Validation successful. JSON data conforms to the schema.")
-    except Exception as e:
-        print("JSON data does not conform to the schema, please fix the following errors:", e)
+        exit(0)
+    except jsonschema.exceptions.ValidationError as e:
+        print("JSON data does not conform to the schema, please fix the following errors:", e.json_path)
         exit(0)
     
     global_info = copy.copy(config_data)
@@ -267,7 +269,7 @@ def run_easy_moss(filtered_assignment_info: Json_Info) -> str:
 
 def main():
     if len(sys.argv) != 3:
-        print("Usage: ./easy-moss <path to json config file> <test1 or test2 if testing>")
+        print("Usage: ./easy-moss <path to json config file>")
         exit(0)
 
     try:
