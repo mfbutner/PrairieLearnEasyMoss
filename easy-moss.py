@@ -38,7 +38,6 @@ class Config_Data(TypedDict):
 
 class Json_Info(TypedDict):
     starting_path: str
-    moss_path: NotRequired[str]
     comment: NotRequired[str]
     number_of_matches_to_show: NotRequired[int]
     max_appearances_before_ignored: NotRequired[int]
@@ -74,7 +73,6 @@ def unzip_files(file_paths: list[str], question_name: str) -> None:
 
     #zip files
     for homework_path in file_paths:
-        #print(homework_path)
         if homework_path.endswith(".zip"):
             with ZipFile(homework_path) as zip_object:
                 # Create new folder so we don't clutter the main one (also solves duplicate name issue)
@@ -145,7 +143,6 @@ def get_moss_command(assignment: Json_Info, homework_file_paths: list[str], base
     try:
         moss_command.append(assignment["moss_path"])
     except KeyError:
-        print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
         moss_command.append("./moss.sh")  # should be path to moss in json, defualt is ./moss.sh
 
     moss_command.extend(['-l', (assignment["language"]).lower()])
@@ -180,7 +177,6 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
 
         schema_registry = Registry().with_resources(
             [
-                #("https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/easy_moss_config.schema.json", referencing.Resource.from_contents(global_schema)),
                 ("https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/languages.moss.json", referencing.Resource.from_contents(languages_schema)),
                 ('urn:moss_languages', referencing.Resource.from_contents(languages_schema)),
                 ("https://github.com/mfbutner/PrairieLearnEasyMoss/blob/main/question_overridables.schema.json", referencing.Resource.from_contents(question_overridables)),
@@ -190,53 +186,26 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
             ]
         )
     # JSON SCHEMA VALIDATION
-    #error_tree = ErrorTree(v.iter_errors(instance))
     v = jsonschema.Draft7Validator(registry = schema_registry, schema = global_schema)
     errors = list(v.iter_errors(config_data))
     if (len(errors) == 0):
-        validate(config_data, global_schema, registry = schema_registry) #TODO: move to validator to call v.iter_errors and get all errors
+        try:
+            validate(config_data, global_schema, registry = schema_registry)
+        except: #catches extra moss.json tags
+            print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
+            print("There is a key in the moss JSON global scope that is not defined in the schema.")
+            exit(0)
         print("Validation successful. JSON data conforms to the schema.")
     else:
         print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
         print(f'JSON data does not conform to the schema, please fix the following errors:\n')
         tree = ErrorTree(v.iter_errors(config_data))
-    
-
-        for i in range(1,53): 
-            print(i)
-            if (i in tree) == True:
-                print("hi")
-
-        if (9 in tree) == True:
-            print(f"27 is wrong")
-
-        # num_json_lines = 53
-        # for line in range(num_json_lines):
-        #     print (line)
-        #     if (int(line) in tree) == True:
-        #         print(f"{line} is wrong")
-
         for e in sorted(v.iter_errors(config_data), key=str):
-            if e.cause is None: #TODO: e.cause is always None (look at error trees; missing key, wrong type, length; also show line where it is located)
+            if e.cause is None:
                 print(f'- {e.validator_value} is missing in {(e.json_path).replace("$","").lstrip(".")}. {e.message}.')
             else:
                 print(e.cause)
         exit(0)
-
-    # try:
-    #     validate(config_data, global_schema, registry = schema_registry) #TODO: move to validator to call v.iter_errors and get all errors
-    #     print("Validation successful. JSON data conforms to the schema.")
-    # except jsonschema.exceptions.ValidationError as e:
-    #     print(f'\033[31m############################ Oops! ❌ ############################\033[1;37m')
-    #     print(f'JSON data does not conform to the schema, please fix the following errors:\n')
-        
-    #     tree = ErrorTree(e.message)
-
-    #     if e.cause is None: #TODO: e.cause is always None (look at error trees; missing key, wrong type, length; also show line where it is located)
-    #         print(f'- {e.validator_value} is missing in {(e.json_path).replace("$","").replace(".","")}.')
-    #     else:
-    #         print(e.cause)
-    #     exit(0)
     
     global_info = copy.copy(config_data)
     if "assignment_info" in global_info:
@@ -246,8 +215,6 @@ def json_info_validation(config_data: Config_Data) -> list[Json_Info]:
     filtered_assignment_info = []
     for assignment in config_data["assignment_info"]: 
         filtered_assignment_info.append(global_info.new_child(assignment))
-
-    #print(filtered_assignment_info)
 
     return filtered_assignment_info
 
@@ -288,7 +255,7 @@ def get_file_paths(desired_files: list[str], starting_path: str, question_name: 
 
     for path in all_file_paths:
         if "_MACOSX" in path:
-            all_file_paths.remove(path)  # TODO: come up with better way to avoid this file?
+            all_file_paths.remove(path)
 
     return all_file_paths
 
@@ -300,13 +267,11 @@ def run_easy_moss(filtered_assignment_info: Json_Info) -> None:
     """
     for assignment in filtered_assignment_info:
         print(f'\033[92m\033[1m############################ Checking {(assignment["question_name"])} ✅ ############################\033[1;37m')
-        # TODO: take tempdir portion out of for loop
         temp_dir = tempfile.TemporaryDirectory()
         global_temp_dir = temp_dir.name
         
         # copies all files from starting path dir to global temp dir
-        # TODO: may cause issues when question_path is not the same as the assignment_path.
-        global_temp_dir = shutil.copytree(assignment["assignment_path"], global_temp_dir, dirs_exist_ok=True)
+        global_temp_dir = shutil.copytree(assignment["question_path"], global_temp_dir, dirs_exist_ok=True)
 
         # unzips and flattens files
         question_name = assignment["question_name"]
@@ -316,7 +281,6 @@ def run_easy_moss(filtered_assignment_info: Json_Info) -> None:
 
         homework_file_paths = get_file_paths(assignment["submitted_files"],
                                              global_temp_dir, question_name)  # strings of paths of all .c
-        #TODO: ASSUMES it always exists
         base_file_paths = get_file_paths(assignment["base_files"], global_temp_dir, question_name)
 
         moss_command = get_moss_command(assignment, homework_file_paths, base_file_paths)

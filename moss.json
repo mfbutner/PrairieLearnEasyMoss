@@ -1,9 +1,11 @@
 {
+  "moss_path": "./moss.sh",
   "question_path": "./Homework3",
   "comment": "My comment",
   "max_appearances": 900000,
   "number_of_matches_to_show": 100,
   "language": "c",
+  "rgthyil": "femboy",
   "assignment_info": [
     {
       "question_name": "programming_problem",
@@ -38,7 +40,8 @@
       ],
       "max_appearances": 1,
       "comment": "Problem 1",
-      "number_of_matches_to_show": 100
+      "number_of_matches_to_show": 100,
+      "question_path": "./Homework3"
     }
   ]
  }

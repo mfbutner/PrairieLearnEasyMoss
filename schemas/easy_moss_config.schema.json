@@ -16,6 +16,11 @@
           "items": {
             "$ref": "urn:question"
           }
+        },
+        "moss_path": {
+          "description": "Path to moss shell script from user’s current directory, not required",
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -65,8 +70,8 @@
             }
           }
         }
-      ]
+      ],
+      "unevaluatedProperties": false
     }
-  ], 
-  "unevaluatedProperties": false
+  ]
 }

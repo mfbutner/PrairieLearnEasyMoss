@@ -30,6 +30,9 @@ This value if not specified as a default, must be provided within a Problem.
 
 ### MOSS (Global) Schema
 
+- Moss Path
+  - The path to the moss shell script from the user's current directory
+  - Not required, defaults to `./moss.sh` if not given
 - Assignment Path
   - The path to the zip file containing the assignment downloaded from Prarie Learn
   - Question Required
